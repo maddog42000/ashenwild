@@ -2,19 +2,27 @@ extends CharacterBody2D
 
 signal health_changed(current: int, maximum: int)
 signal died
+signal fall_damage_taken(amount: int)
+signal enemy_stomped
 
-const SPEED := 260.0
-const ACCELERATION := 1750.0
-const FRICTION := 2100.0
-const JUMP_VELOCITY := -525.0
-const DOUBLE_JUMP_VELOCITY := -470.0
-const BASE_GRAVITY := 980.0
-const GRAVITY_PER_MISSING_HEART := 170.0
-const BASE_FALL_CAP := 620.0
-const FALL_CAP_PER_MISSING_HEART := 75.0
+const BASE_SPEED := 260.0
+const SPEED_PER_MISSING_HEART := 90.0
+const BASE_ACCELERATION := 1750.0
+const ACCELERATION_PER_MISSING_HEART := 280.0
+const BASE_FRICTION := 2100.0
+const FRICTION_PER_MISSING_HEART := 480.0
+const BASE_JUMP_VELOCITY := -525.0
+const JUMP_BOOST_PER_MISSING_HEART := -45.0
+const BASE_DOUBLE_JUMP_VELOCITY := -470.0
+const DOUBLE_JUMP_BOOST_PER_MISSING_HEART := -50.0
+const BASE_GRAVITY := 950.0
+const GRAVITY_PER_MISSING_HEART := 350.0
+const BASE_FALL_CAP := 700.0
+const FALL_CAP_PER_MISSING_HEART := 160.0
+const FALL_DAMAGE_THRESHOLD := 650.0
 const MAX_HEALTH := 3
-const FULL_HEALTH_BODY_SCALE := Vector2(0.25, 0.21)
-const BASE_COLLIDER_RADIUS := 14.0
+const FULL_HEALTH_BODY_SCALE := Vector2(0.27, 0.22)
+const BASE_COLLIDER_RADIUS := 15.0
 const BASE_COLLIDER_HEIGHT := 44.0
 
 var health := MAX_HEALTH
@@ -24,9 +32,9 @@ var invulnerable := false
 var attacking := false
 var dead := false
 var attack_ready_at := 0
+var vent_ready_at := 0
 var respawn_position := Vector2(120, 418)
 var body_shape: CapsuleShape2D
-var body_collider: CollisionShape2D
 var player_sprite: AnimatedSprite2D
 var fallback_visuals: Array[Node2D] = []
 
@@ -36,9 +44,9 @@ func _ready() -> void:
     body_shape = CapsuleShape2D.new()
     body_shape.radius = BASE_COLLIDER_RADIUS
     body_shape.height = BASE_COLLIDER_HEIGHT
-    body_collider = CollisionShape2D.new()
-    body_collider.shape = body_shape
-    add_child(body_collider)
+    var collider := CollisionShape2D.new()
+    collider.shape = body_shape
+    add_child(collider)
     add_to_group("player")
     _make_visual()
     _update_health_scale()
@@ -83,11 +91,17 @@ func _make_visual() -> void:
         add_child(player_sprite)
         player_sprite.play("idle")
 
+func _health_ratio() -> float:
+    return float(health) / float(MAX_HEALTH)
+
+func _missing_hearts() -> int:
+    return MAX_HEALTH - health
+
 func _update_health_scale() -> void:
-    var health_ratio := float(health) / float(MAX_HEALTH)
-    var size_factor := 0.70 + 0.30 * health_ratio
+    # Three visibly distinct silhouettes: full-size, reduced, then compact.
+    var size_factor := 0.34 + 0.66 * _health_ratio()
     if is_instance_valid(player_sprite):
-        player_sprite.scale = Vector2(FULL_HEALTH_BODY_SCALE.x * size_factor, FULL_HEALTH_BODY_SCALE.y * size_factor)
+        player_sprite.scale = FULL_HEALTH_BODY_SCALE * size_factor
     for visual in fallback_visuals:
         if is_instance_valid(visual):
             visual.scale = Vector2.ONE * size_factor
@@ -95,38 +109,83 @@ func _update_health_scale() -> void:
         body_shape.radius = BASE_COLLIDER_RADIUS * size_factor
         body_shape.height = BASE_COLLIDER_HEIGHT * size_factor
 
+func get_current_speed() -> float:
+    return BASE_SPEED + SPEED_PER_MISSING_HEART * _missing_hearts()
+
 func get_current_gravity() -> float:
-    return BASE_GRAVITY + GRAVITY_PER_MISSING_HEART * (MAX_HEALTH - health)
+    return BASE_GRAVITY + GRAVITY_PER_MISSING_HEART * _missing_hearts()
 
 func get_current_fall_cap() -> float:
-    return BASE_FALL_CAP + FALL_CAP_PER_MISSING_HEART * (MAX_HEALTH - health)
+    return BASE_FALL_CAP + FALL_CAP_PER_MISSING_HEART * _missing_hearts()
+
+func breathglass_burst() -> void:
+    if dead or Time.get_ticks_msec() < vent_ready_at:
+        return
+    vent_ready_at = Time.get_ticks_msec() + 1400
+    velocity.y = -760.0 - 55.0 * _missing_hearts()
+    jumps_used = 1
 
 func _physics_process(delta: float) -> void:
     if dead:
         return
+    var was_on_floor := is_on_floor()
     var direction := Input.get_axis("move_left", "move_right")
+    var missing_hearts := _missing_hearts()
+    var run_speed := get_current_speed()
+    var acceleration := BASE_ACCELERATION + ACCELERATION_PER_MISSING_HEART * missing_hearts
+    var friction := BASE_FRICTION + FRICTION_PER_MISSING_HEART * missing_hearts
     if direction != 0.0:
-        velocity.x = move_toward(velocity.x, direction * SPEED, ACCELERATION * delta)
+        velocity.x = move_toward(velocity.x, direction * run_speed, acceleration * delta)
         facing = 1 if direction > 0.0 else -1
     else:
-        velocity.x = move_toward(velocity.x, 0.0, FRICTION * delta)
+        velocity.x = move_toward(velocity.x, 0.0, friction * delta)
 
-    if is_on_floor():
+    if was_on_floor:
         jumps_used = 0
     if Input.is_action_just_pressed("jump") and jumps_used < 2:
-        velocity.y = JUMP_VELOCITY if jumps_used == 0 else DOUBLE_JUMP_VELOCITY
+        velocity.y = BASE_JUMP_VELOCITY + JUMP_BOOST_PER_MISSING_HEART * missing_hearts if jumps_used == 0 else BASE_DOUBLE_JUMP_VELOCITY + DOUBLE_JUMP_BOOST_PER_MISSING_HEART * missing_hearts
         jumps_used += 1
-    if not is_on_floor():
+    if not was_on_floor:
         velocity.y = minf(velocity.y + get_current_gravity() * delta, get_current_fall_cap())
     if Input.is_action_just_released("jump") and velocity.y < -120.0:
         velocity.y = -120.0
 
     if Input.is_action_just_pressed("attack") and Time.get_ticks_msec() >= attack_ready_at:
         _attack()
+
+    var fall_speed_before_landing := velocity.y
     move_and_slide()
+    var stomped_enemy := _check_enemy_contacts(fall_speed_before_landing)
+    if not stomped_enemy and not was_on_floor and is_on_floor() and fall_speed_before_landing >= FALL_DAMAGE_THRESHOLD:
+        _apply_fall_damage(fall_speed_before_landing)
     _update_animation(direction)
-    if global_position.y > 680.0:
+    if global_position.y > 700.0:
         _die()
+
+func _check_enemy_contacts(fall_speed_before_landing: float) -> bool:
+    var stomped_enemy := false
+    for index in range(get_slide_collision_count()):
+        var collision := get_slide_collision(index)
+        var collider := collision.get_collider()
+        if collider is Node and collider.is_in_group("enemies") and collider.has_method("apply_contact_damage"):
+            if collision.get_normal().y < -0.65 and fall_speed_before_landing > 0.0:
+                collider.take_damage(1, facing)
+                velocity.y = -320.0
+                jumps_used = 0
+                enemy_stomped.emit()
+                stomped_enemy = true
+            else:
+                collider.apply_contact_damage(self)
+    return stomped_enemy
+
+func _apply_fall_damage(impact_speed: float) -> void:
+    if invulnerable or dead:
+        return
+    var damage := mini(2, 1 + int((impact_speed - FALL_DAMAGE_THRESHOLD) / 180.0))
+    var previous_health := health
+    take_damage(damage, global_position.x, false)
+    if health < previous_health:
+        fall_damage_taken.emit(previous_health - health)
 
 func _update_animation(direction: float) -> void:
     if not is_instance_valid(player_sprite) or attacking or dead:
@@ -156,13 +215,14 @@ func _attack() -> void:
     if is_instance_valid(player_sprite):
         player_sprite.play("idle")
 
-func take_damage(amount: int, source_x: float) -> void:
+func take_damage(amount: int, source_x: float, apply_knockback: bool = true) -> void:
     if invulnerable or dead:
         return
     health = maxi(0, health - amount)
     _update_health_scale()
     health_changed.emit(health, MAX_HEALTH)
-    velocity = Vector2(signf(global_position.x - source_x) * 230.0, -210.0)
+    if apply_knockback:
+        velocity = Vector2(signf(global_position.x - source_x) * 230.0, -210.0)
     invulnerable = true
     modulate = Color(1.0, 0.55, 0.52)
     if health <= 0:

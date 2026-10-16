@@ -1,60 +1,43 @@
-# ASHENWILD — The Forgotten Hollow + The Pale Spine
+# ASHENWILD — Phase 3: Longer Hollow Routes
 
-An original Godot 4 action-platformer prototype for Android. This update adds a second connected level and a simple risk/reward effect: the wanderer is broadest and most buoyant at full health, then visibly shrinks and falls faster as health is lost.
+A Godot 4 Android action-platformer prototype. This iteration makes both levels longer and more route-driven, adds a marked high-risk/high-reward health profile, fixes enemy contact damage, and adds fall damage and Breathglass rescue vents.
 
-## Open on Android
+## Play flow and controls
 
-1. Download and extract the repository ZIP or clone the public GitHub repository.
-2. In Godot Android Editor, import/scan for the extracted project folder (the one containing `project.godot`). Exact labels vary by editor version.
-3. Let Godot import the project, open the main scene, and run it in landscape.
-4. If prompted for storage access, allow the editor to access the project folder.
+Level 1, **The Forgotten Hollow**, now spans several screens and moves through tiered stepping stones, two dangerous gaps, and the low-roof Echo Crawl. Collect the teal shard, touch the checkpoint, and reach the gate. The gate leads to Level 2, **The Pale Spine**, a longer route with four wider gaps, chained ascent/descent platforms, a second narrow-roof tunnel, four Ash Mites, a checkpoint, an amber shard, and the final gate.
 
-The GitHub repository is public at https://github.com/maddog42000/ashenwild. The `main` branch is the stable baseline; `development` contains the latest unmerged update. The ZIP/source folder is not an Android APK.
+Touch controls remain: left/right on the lower left, jump and hit on the lower right, pause and restart at the top right. Keyboard fallback: A/D or arrows to move, Space/W/Up to jump, J/X to attack, P/Escape to pause, and R to restart. Holding separate fingers still supports movement plus jump or attack.
 
-## Controls
+**New environmental mechanic — Breathglass vents:** a glowing updraft in the large pits can catch a falling wanderer and launch them back toward the platforms with a strong upward burst. They are a rescue option, not a substitute for landing safely; the vent has a short cooldown.
 
-- Left/right: large lower-left buttons (keyboard A/D or arrows also work).
-- Jump: lower-right **JUMP** button (Space/W/Up also work). Press again in the air for a double jump; releasing early shortens the jump.
-- Attack: **HIT** button (J or X on a keyboard). Face an enemy and attack within range.
-- Pause: upper-right **Ⅱ** button (P or Escape on a keyboard).
-- Restart: upper-right **↻** button (R on a keyboard).
+**Tunnel technique:** the Echo Crawl and Cinder Squeeze place a low stone inside a low-ceiling passage. A short, carefully timed jump can clear the stone without hitting the roof. The gaps and tunnel geometry are deliberately more demanding than the first prototype; adjust the layout if the on-phone feel proves too punishing.
 
-Touch controls accept simultaneous fingers, so you can move and jump/attack together.
+## High-risk, high-reward health tuning
 
-## Playthrough
+Each missing heart makes a clearly distinct character-size and movement change. The visual and collision size factors are approximately **100% / 78% / 56%** at three, two, and one health. The wanderer also runs faster and gets a stronger launch at lower health, but gravity and falling speed increase sharply. Current tuning:
 
-**Level 1 — The Forgotten Hollow:** traverse the starter platforms, defeat an Ash Mite, collect the teal shard, kindle the checkpoint, and use the shard to open the exit.
+| Health | Run speed | Gravity | Max fall speed | First jump launch | Body scale |
+|---|---:|---:|---:|---:|---:|
+| 3 hearts | 260 px/s | 950 px/s² | 700 px/s | −525 px/s | 100% |
+| 2 hearts | 350 px/s | 1,300 px/s² | 860 px/s | −570 px/s | 78% |
+| 1 heart | 440 px/s | 1,650 px/s² | 1,020 px/s | −615 px/s | 56% |
 
-**Level 2 — The Pale Spine:** continue into a longer, warmer-toned cavern crossing with two gaps, raised stepping stones, two Ash Mites, its own checkpoint and shard, and a final gate. The level transition restores health and starts Level 2 at its own checkpoint. Collect its shard to finish the current two-level prototype.
+Double-jump launch strength also increases with each missing heart. That extra speed and launch can carry the player farther, but the heavier gravity means a smaller landing window. The values are exposed as constants near the top of `scripts/player.gd` for further tuning.
 
-Each death restores three health points at the latest checkpoint. Restart begins again from Level 1.
+### Damage rules
 
-## New movement and damage behavior
+Ash Mites now damage the player **only on actual body collision**. Merely being close or jumping over one is not enough. Landing on an enemy from above is a safe stomp that hurts the Ash Mite and bounces the player. Side/body contact still damages the player. There are no enemy projectiles in this build; any future projectile should damage only when its hitbox actually touches the player.
 
-At full health the wanderer has a wider body, reduced gravity, and a controlled maximum falling speed for more deliberate landings. The base gravity was lowered from 1,250 to 980 px/s², and the maximum fall speed is capped at 620 px/s. Each missing health point makes the sprite and collision capsule smaller, increases gravity by 170 px/s², and raises the fall-speed cap by 75 px/s. At one remaining health point this is 1,320 px/s² gravity and a 770 px/s fall cap. The double jump remains available. Checkpoints restore full size and full health.
+Hard landings also hurt: a downward impact of 650–829 px/s costs one heart; at 830 px/s or higher it costs two. Ordinary controlled jumps are below the threshold. Checkpoints and level transitions restore full health, size, and the safer full-health movement profile.
 
-These values are a first tuning pass, not measured on your phone. Please adjust them after playing if the character feels too floaty, the body-size effect feels too strong, or landings are still difficult.
+## Testing status
 
-## Included systems and limitations
+Tested against Godot **4.7.2 stable**: editor import, entry-scene launch, and automated smoke checks for both level transitions and completion, all three health profiles, no proximity damage, side-contact damage, safe stomping, fall damage, and Breathglass launch. Run the regression on desktop Godot with `godot --headless --path . --script res://tests/gameplay_smoke.gd`. The game has **not** been run on your phone in this session. The spacing, tunnel clearance, fall-damage feel, and touch-button comfort need a playtest in the Android Editor.
 
-The project includes movement and double jump, collision, camera follow, melee attacks, one basic enemy type, three-point health, hit invulnerability/knockback, hazards, checkpoints, collectibles, a shard-locked gate, a win state, restart/pause controls, generated original character/enemy sprites, and a painted cavern backdrop.
+## Import on Android
 
-Still not included: save files, a boss, extra abilities beyond double jump, varied enemy classes, audio, menus, and Android APK export/signing. These remain future work. The two-level prototype reuses an enemy and background rather than claiming a complete production game.
+Extract the project archive into a new folder, then import/scan that folder (the one containing `project.godot`) in Godot Android Editor. Let the editor finish importing. The project is source, not an APK. The latest code is on the public GitHub `development` branch; `main` remains the stable baseline pending review.
 
-## Version and test status
+## Project contents
 
-Created for Godot **4.7.2 stable** with the `gl_compatibility` renderer. The updated project was editor-imported and its entry scene was run briefly headlessly in this sandbox. The Level 2 transition and health-scaling behavior should still be confirmed on-device; this environment cannot measure Galaxy S20 performance or touchscreen comfort.
-
-On phone, test that the first ledge and double jump work; attack enemies; compare the character’s size and falling feel at three, two, and one health; reach the first exit with its shard; complete Level 2; verify checkpoint respawn restores full health/size; and check pause/restart. Please share an exact Godot error or the step that behaves unexpectedly.
-
-## Project files
-
-- `project.godot` — landscape/mobile renderer setup
-- `scenes/main.tscn` — main scene
-- `scenes/player.tscn`, `scenes/enemy.tscn` — reusable actors
-- `scripts/main.gd` — both level layouts, progression, HUD, and pause/restart
-- `scripts/player.gd` — movement, health-scaled body/gravity, and attack
-- `scripts/enemy.gd` — Ash Mite behavior
-- `scripts/touch_controls.gd` — multitouch controls
-- `scripts/scenery.gd` — shared backdrop treatment and fallback scenery
-- `assets/` — generated character/enemy sheets and cavern backdrop
+`scenes/` contains the main, player, and enemy scenes. `scripts/main.gd` builds both routes and progression; `scripts/player.gd` owns movement, health, fall damage, Breathglass bursts, and attacks; `scripts/enemy.gd` owns patrol, pursuit, contact damage, stomps, and defeat. `tests/gameplay_smoke.gd` checks the key gameplay regressions headlessly. `assets/` contains the original wanderer and Ash Mite sprite sheets plus the cavern background. `scripts/scenery.gd` fits the backdrop to each longer route and provides a no-art fallback.

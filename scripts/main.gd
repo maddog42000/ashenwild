@@ -28,6 +28,8 @@ func _ready() -> void:
     add_child(player)
     player.health_changed.connect(_on_health_changed)
     player.died.connect(_on_player_died)
+    player.fall_damage_taken.connect(_on_fall_damage_taken)
+    player.enemy_stomped.connect(_on_enemy_stomped)
     _on_health_changed(player.health, player.MAX_HEALTH)
     camera = Camera2D.new()
     camera.position_smoothing_enabled = true
@@ -71,38 +73,72 @@ func _build_level(level_id: int) -> void:
     shards = 0
 
     if level_id == 1:
-        level_world_width = 1600.0
+        level_world_width = 3300.0
         _make_scenery(level_world_width, false)
-        _platform(Vector2(250, 462), Vector2(500, 50), Color(0.19, 0.24, 0.24))
-        _platform(Vector2(1100, 462), Vector2(800, 50), Color(0.19, 0.24, 0.24))
-        _platform(Vector2(355, 366), Vector2(190, 24), Color(0.31, 0.37, 0.34))
-        _platform(Vector2(620, 302), Vector2(180, 24), Color(0.31, 0.37, 0.34))
-        _platform(Vector2(1030, 372), Vector2(200, 24), Color(0.31, 0.37, 0.34))
-        _make_checkpoint(Vector2(905, 418))
-        _make_collectible(Vector2(620, 250))
-        _make_exit(Vector2(1480, 420))
-        _make_enemy(Vector2(780, 417))
-        _make_hazard(Vector2(610, 635), Vector2(230, 70))
-        _make_decorations([110.0, 450.0, 730.0, 1110.0, 1370.0])
+        _platform(Vector2(245, 462), Vector2(490, 50), Color(0.19, 0.24, 0.24))
+        _platform(Vector2(935, 462), Vector2(470, 50), Color(0.19, 0.24, 0.24))
+        _platform(Vector2(1645, 462), Vector2(550, 50), Color(0.19, 0.24, 0.24))
+        _platform(Vector2(2610, 462), Vector2(1380, 50), Color(0.19, 0.24, 0.24))
+        _platform(Vector2(590, 354), Vector2(150, 24), Color(0.31, 0.37, 0.34))
+        _platform(Vector2(815, 278), Vector2(150, 24), Color(0.31, 0.37, 0.34))
+        _platform(Vector2(1050, 345), Vector2(145, 24), Color(0.31, 0.37, 0.34))
+        _platform(Vector2(1280, 278), Vector2(170, 24), Color(0.31, 0.37, 0.34))
+        _platform(Vector2(1510, 323), Vector2(170, 24), Color(0.31, 0.37, 0.34))
+        _platform(Vector2(1760, 246), Vector2(180, 24), Color(0.31, 0.37, 0.34))
+        # Echo Crawl: tap-jump over the low stone while staying under the roof.
+        _platform(Vector2(2300, 357), Vector2(520, 16), Color(0.25, 0.29, 0.29))
+        _platform(Vector2(2285, 428), Vector2(34, 18), Color(0.48, 0.40, 0.34))
+        _platform(Vector2(2650, 345), Vector2(160, 24), Color(0.31, 0.37, 0.34))
+        _platform(Vector2(2760, 275), Vector2(180, 24), Color(0.31, 0.37, 0.34))
+        _make_checkpoint(Vector2(760, 418))
+        _make_collectible(Vector2(1760, 198))
+        _make_exit(Vector2(3180, 420))
+        _make_enemy(Vector2(1050, 417))
+        _make_enemy(Vector2(1970, 417))
+        _make_hazard(Vector2(595, 635), Vector2(220, 70))
+        _make_hazard(Vector2(1280, 635), Vector2(220, 70))
+        _make_vent(Vector2(600, 520))
+        _make_vent(Vector2(1320, 520))
+        _make_decorations([120.0, 455.0, 735.0, 1100.0, 1420.0, 1800.0, 2180.0, 2550.0, 2920.0])
     else:
-        level_world_width = 2000.0
+        level_world_width = 4300.0
         _make_scenery(level_world_width, true)
         _platform(Vector2(250, 462), Vector2(500, 50), Color(0.22, 0.20, 0.22))
-        _platform(Vector2(950, 462), Vector2(600, 50), Color(0.22, 0.20, 0.22))
-        _platform(Vector2(1600, 462), Vector2(800, 50), Color(0.22, 0.20, 0.22))
-        _platform(Vector2(600, 360), Vector2(170, 24), Color(0.38, 0.30, 0.27))
-        _platform(Vector2(820, 302), Vector2(170, 24), Color(0.38, 0.30, 0.27))
-        _platform(Vector2(1110, 350), Vector2(190, 24), Color(0.38, 0.30, 0.27))
-        _platform(Vector2(1320, 320), Vector2(180, 24), Color(0.38, 0.30, 0.27))
-        _platform(Vector2(1560, 355), Vector2(200, 24), Color(0.38, 0.30, 0.27))
-        _make_checkpoint(Vector2(940, 418))
-        _make_collectible(Vector2(1110, 298))
-        _make_exit(Vector2(1850, 420))
-        _make_enemy(Vector2(920, 417))
-        _make_enemy(Vector2(1620, 417))
-        _make_hazard(Vector2(600, 635), Vector2(230, 70))
-        _make_hazard(Vector2(1325, 635), Vector2(220, 70))
-        _make_decorations([150.0, 470.0, 740.0, 990.0, 1240.0, 1480.0, 1770.0])
+        _platform(Vector2(1075, 462), Vector2(650, 50), Color(0.22, 0.20, 0.22))
+        _platform(Vector2(1975, 462), Vector2(650, 50), Color(0.22, 0.20, 0.22))
+        _platform(Vector2(2925, 462), Vector2(750, 50), Color(0.22, 0.20, 0.22))
+        _platform(Vector2(3925, 462), Vector2(750, 50), Color(0.22, 0.20, 0.22))
+        _platform(Vector2(625, 356), Vector2(170, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(865, 282), Vector2(160, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(1160, 338), Vector2(180, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(1480, 272), Vector2(190, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(1740, 330), Vector2(170, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(2010, 245), Vector2(190, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(2370, 350), Vector2(180, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(2670, 292), Vector2(180, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(2960, 225), Vector2(180, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(3220, 322), Vector2(180, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(3460, 270), Vector2(170, 24), Color(0.38, 0.30, 0.27))
+        # The Cinder Squeeze is a second low-roof tap-jump tunnel.
+        _platform(Vector2(3750, 357), Vector2(400, 16), Color(0.33, 0.27, 0.25))
+        _platform(Vector2(3760, 428), Vector2(34, 18), Color(0.53, 0.37, 0.30))
+        _platform(Vector2(3650, 337), Vector2(150, 24), Color(0.38, 0.30, 0.27))
+        _platform(Vector2(4000, 300), Vector2(170, 24), Color(0.38, 0.30, 0.27))
+        _make_checkpoint(Vector2(1850, 418))
+        _make_collectible(Vector2(2960, 176))
+        _make_exit(Vector2(4160, 420))
+        _make_enemy(Vector2(1050, 417))
+        _make_enemy(Vector2(2220, 417))
+        _make_enemy(Vector2(3000, 417))
+        _make_enemy(Vector2(3930, 417))
+        _make_hazard(Vector2(625, 635), Vector2(250, 70))
+        _make_hazard(Vector2(1625, 635), Vector2(250, 70))
+        _make_hazard(Vector2(2425, 635), Vector2(250, 70))
+        _make_hazard(Vector2(3425, 635), Vector2(250, 70))
+        _make_vent(Vector2(625, 520))
+        _make_vent(Vector2(1625, 520))
+        _make_vent(Vector2(3425, 520))
+        _make_decorations([120.0, 470.0, 830.0, 1250.0, 1550.0, 1900.0, 2260.0, 2620.0, 2980.0, 3310.0, 3650.0, 4080.0])
 
     _update_camera_limits()
     _refresh_hud()
@@ -221,6 +257,15 @@ func _make_hazard(at: Vector2, size: Vector2) -> void:
         spike.color = Color(0.68, 0.34, 0.29) if current_level == 1 else Color(0.80, 0.42, 0.27)
         level_root.add_child(spike)
 
+func _make_vent(at: Vector2) -> void:
+    var vent := Polygon2D.new()
+    vent.position = at + Vector2(0, 28)
+    vent.polygon = PackedVector2Array([Vector2(-30, 15), Vector2(-20, -8), Vector2(-10, 15), Vector2(0, -18), Vector2(10, 15), Vector2(20, -8), Vector2(30, 15)])
+    vent.color = Color(0.20, 0.82, 0.74, 0.8) if current_level == 1 else Color(0.98, 0.52, 0.30, 0.8)
+    level_root.add_child(vent)
+    var area := _new_trigger("BreathglassVent", at, Vector2(82, 72))
+    area.body_entered.connect(_on_vent_entered)
+
 func _build_hud() -> void:
     var layer := CanvasLayer.new()
     layer.name = "HUD"
@@ -337,6 +382,17 @@ func _complete_game() -> void:
 func _on_hazard_entered(body: Node2D) -> void:
     if body == player:
         player._die()
+
+func _on_vent_entered(body: Node2D) -> void:
+    if body == player:
+        player.breathglass_burst()
+
+func _on_fall_damage_taken(amount: int) -> void:
+    var heart_text := "HEART" if amount == 1 else "HEARTS"
+    _show_message("HARD LANDING — %d %s LOST" % [amount, heart_text], 2.0)
+
+func _on_enemy_stomped() -> void:
+    _show_message("ASH MITE STOMP!", 1.0)
 
 func _on_player_died() -> void:
     get_tree().create_timer(0.65).timeout.connect(func(): player.respawn(checkpoint_position))
