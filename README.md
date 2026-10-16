@@ -1,62 +1,43 @@
-# ASHENWILD — The Forgotten Hollow (Playable Vertical Slice)
+# ASHENWILD — Phase 3: Longer Hollow Routes
 
-An original Godot 4 action-platformer prototype for Android. This first-level slice includes movement, a double jump, melee combat, one patrolling creature, three health points, a checkpoint, a collectible shard, a locked exit, touch pause/restart controls, and original visual assets. Everything needed to open the source project is in this folder; no plugins or external asset downloads are needed.
+A Godot 4 Android action-platformer prototype. This iteration makes both levels longer and more route-driven, adds a marked high-risk/high-reward health profile, fixes enemy contact damage, and adds fall damage and Breathglass rescue vents.
 
-## Open on Android
+## Play flow and controls
 
-1. Download and extract `ashenwild-starter.zip` in your phone's file manager.
-2. In Godot Android Editor, import/scan for the extracted project folder (the one containing `project.godot`). Exact labels vary by editor version.
-3. Let Godot import the project, open the main scene, and run it in landscape.
-4. If prompted for storage access, allow the editor to access the extracted folder.
+Level 1, **The Forgotten Hollow**, now spans several screens and moves through tiered stepping stones, two dangerous gaps, and the low-roof Echo Crawl. Collect the teal shard, touch the checkpoint, and reach the gate. The gate leads to Level 2, **The Pale Spine**, a longer route with four wider gaps, chained ascent/descent platforms, a second narrow-roof tunnel, four Ash Mites, a checkpoint, an amber shard, and the final gate.
 
-Keep the extracted folder in a writable location Godot can access. Do not try to run the ZIP without extracting it. The ZIP is a source project, not an Android APK.
+Touch controls remain: left/right on the lower left, jump and hit on the lower right, pause and restart at the top right. Keyboard fallback: A/D or arrows to move, Space/W/Up to jump, J/X to attack, P/Escape to pause, and R to restart. Holding separate fingers still supports movement plus jump or attack.
 
-## Controls
+**New environmental mechanic — Breathglass vents:** a glowing updraft in the large pits can catch a falling wanderer and launch them back toward the platforms with a strong upward burst. They are a rescue option, not a substitute for landing safely; the vent has a short cooldown.
 
-- Left and right: large lower-left buttons (keyboard A/D or arrows also work).
-- Jump: lower-right **JUMP** button (Space/W/Up also work). Press again while airborne to double jump; releasing early shortens a jump.
-- Attack: **HIT** button (J or X on a keyboard). Face the enemy and attack within range.
-- Pause: upper-right **Ⅱ** button (P or Escape on a keyboard).
-- Restart: upper-right **↻** button (R on a keyboard).
+**Tunnel technique:** the Echo Crawl and Cinder Squeeze place a low stone inside a low-ceiling passage. A short, carefully timed jump can clear the stone without hitting the roof. The gaps and tunnel geometry are deliberately more demanding than the first prototype; adjust the layout if the on-phone feel proves too punishing.
 
-The controls accept simultaneous fingers, so you can move and jump/attack at the same time.
+## High-risk, high-reward health tuning
 
-## First-level goals
+Each missing heart makes a clearly distinct character-size and movement change. The visual and collision size factors are approximately **100% / 78% / 56%** at three, two, and one health. The wanderer also runs faster and gets a stronger launch at lower health, but gravity and falling speed increase sharply. Current tuning:
 
-1. Practice movement in the starting area and use the raised ledges; the opening ledge is reachable with one tuned jump, and the second jump gives extra recovery/range.
-2. Defeat the Ash Mite with repeated attacks. It has two health points and approaches/patrols.
-3. Find the teal shard above the second raised ledge.
-4. Reach the checkpoint flag to set the respawn point.
-5. Take the shard to the stone gate at the far right to finish the level.
-6. Falling into the pit or losing all health respawns the player at the current checkpoint with full health.
+| Health | Run speed | Gravity | Max fall speed | First jump launch | Body scale |
+|---|---:|---:|---:|---:|---:|
+| 3 hearts | 260 px/s | 950 px/s² | 700 px/s | −525 px/s | 100% |
+| 2 hearts | 350 px/s | 1,300 px/s² | 860 px/s | −570 px/s | 78% |
+| 1 heart | 440 px/s | 1,650 px/s² | 1,020 px/s | −615 px/s | 56% |
 
-The level is a compact prototype rather than a polished 2–5 minute final stage. Art, timing, enemy balance, and touch comfort are ready for your phone-side testing.
+Double-jump launch strength also increases with each missing heart. That extra speed and launch can carry the player farther, but the heavier gravity means a smaller landing window. The values are exposed as constants near the top of `scripts/player.gd` for further tuning.
 
-## What is implemented
+### Damage rules
 
-- Responsive horizontal movement, acceleration, air control, variable-height first jump, and double jump.
-- Solid platforms, a gap/hazard, camera follow, and automatic checkpoint-based respawn.
-- Player health with three visible points, brief invulnerability after a hit, knockback, and death recovery.
-- Short melee attack with cooldown; one original Ash Mite with patrol, approach, damage, and defeat behavior.
-- Checkpoint, collectible, locked level exit, simple win state, pause, and restart.
-- Original masked-wanderer and Ash-Mite sprite sheets plus a painted cavern background; geometric props and UI are drawn in Godot.
-- Keyboard fallback and multitouch Android controls.
+Ash Mites now damage the player **only on actual body collision**. Merely being close or jumping over one is not enough. Landing on an enemy from above is a safe stomp that hurts the Ash Mite and bounces the player. Side/body contact still damages the player. There are no enemy projectiles in this build; any future projectile should damage only when its hitbox actually touches the player.
 
-Not included in this vertical slice: save files, additional levels/worlds, multiple enemy classes, bosses, a full animation/audio suite, unlockable abilities beyond double jump, or production APK export/signing. Those are later roadmap work, not claimed as complete.
+Hard landings also hurt: a downward impact of 650–829 px/s costs one heart; at 830 px/s or higher it costs two. Ordinary controlled jumps are below the threshold. Checkpoints and level transitions restore full health, size, and the safer full-health movement profile.
 
-## Version, performance, and testing
+## Testing status
 
-Created and validated with Godot **4.7.2 stable**. The renderer is set to `gl_compatibility` for broad mobile support. The project was headless-imported and the main scene was run briefly in the sandbox without script/scene launch errors. The touchscreen build still needs your on-phone test; I cannot measure Galaxy S20 frame rate or certify touch comfort from this sandbox.
+Tested against Godot **4.7.2 stable**: editor import, entry-scene launch, and automated smoke checks for both level transitions and completion, all three health profiles, no proximity damage, side-contact damage, safe stomping, fall damage, and Breathglass launch. Run the regression on desktop Godot with `godot --headless --path . --script res://tests/gameplay_smoke.gd`. The game has **not** been run on your phone in this session. The spacing, tunnel clearance, fall-damage feel, and touch-button comfort need a playtest in the Android Editor.
 
-On phone, check: opening jump reaches the first ledge; double jump works once per airborne trip; attack defeats the creature; health decreases on contact; pit/death respawns at the latest checkpoint; shard is collected; gate remains sealed until shard is found; pause stops the game; restart returns to the start. Please send any exact Godot error or describe which check fails and I can fix the specific script.
+## Import on Android
 
-## Project files
+Extract the project archive into a new folder, then import/scan that folder (the one containing `project.godot`) in Godot Android Editor. Let the editor finish importing. The project is source, not an APK. The latest code is on the public GitHub `development` branch; `main` remains the stable baseline pending review.
 
-- `project.godot` — project, landscape, renderer settings
-- `scenes/main.tscn` — entry scene
-- `scenes/player.tscn`, `scenes/enemy.tscn` — reusable actor scenes
-- `scripts/main.gd` — level layout, HUD, progression, pause/restart
-- `scripts/player.gd`, `scripts/enemy.gd` — movement, combat, health, enemy behavior
-- `scripts/touch_controls.gd` — on-screen multitouch controls
-- `scripts/scenery.gd` — background and fallback decoration
-- `assets/sprites/` and `assets/backgrounds/` — generated original art
+## Project contents
+
+`scenes/` contains the main, player, and enemy scenes. `scripts/main.gd` builds both routes and progression; `scripts/player.gd` owns movement, health, fall damage, Breathglass bursts, and attacks; `scripts/enemy.gd` owns patrol, pursuit, contact damage, stomps, and defeat. `tests/gameplay_smoke.gd` checks the key gameplay regressions headlessly. `assets/` contains the original wanderer and Ash Mite sprite sheets plus the cavern background. `scripts/scenery.gd` fits the backdrop to each longer route and provides a no-art fallback.
