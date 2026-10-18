@@ -13,6 +13,49 @@ func _run() -> void:
     root.add_child(main)
     await physics_frame
     var player: CharacterBody2D = main.player
+    var controls: Control = main.controls
+    var control_positions: Dictionary = controls._positions(controls.get_viewport_rect().size)
+    var stick_touch := InputEventScreenTouch.new()
+    stick_touch.index = 2
+    stick_touch.pressed = true
+    stick_touch.position = control_positions["stick"]
+    controls._input(stick_touch)
+    var stick_drag := InputEventScreenDrag.new()
+    stick_drag.index = 2
+    stick_drag.position = control_positions["stick"] + Vector2(-52, 0)
+    controls._input(stick_drag)
+    var jump_touch := InputEventScreenTouch.new()
+    jump_touch.index = 3
+    jump_touch.pressed = true
+    jump_touch.position = control_positions["jump"]
+    controls._input(jump_touch)
+    var attack_touch := InputEventScreenTouch.new()
+    attack_touch.index = 4
+    attack_touch.pressed = true
+    attack_touch.position = control_positions["attack"]
+    controls._input(attack_touch)
+    if not Input.is_action_pressed("move_left") or not Input.is_action_pressed("jump") or not Input.is_action_pressed("attack"):
+        _fail("Virtual joystick could not steer simultaneously with jump and attack")
+        return
+    jump_touch.pressed = false
+    controls._input(jump_touch)
+    attack_touch.pressed = false
+    controls._input(attack_touch)
+    stick_touch.pressed = false
+    controls._input(stick_touch)
+    if Input.is_action_pressed("move_left") or Input.is_action_pressed("jump") or Input.is_action_pressed("attack"):
+        _fail("A touch release left a movement or action input stuck")
+        return
+    stick_touch.pressed = true
+    controls._input(stick_touch)
+    stick_drag.position = control_positions["stick"] + Vector2(52, 0)
+    controls._input(stick_drag)
+    if not Input.is_action_pressed("move_right") or Input.is_action_pressed("move_left"):
+        _fail("Virtual joystick did not switch cleanly to right steering")
+        return
+    stick_touch.pressed = false
+    controls._input(stick_touch)
+
     if main.current_level != 1 or main.level_world_width < 3000.0:
         _fail("Level 1 did not load at the expected expanded size")
         return
@@ -110,5 +153,5 @@ func _run() -> void:
         _fail("Final gate failed to complete the prototype")
         return
     paused = false
-    print("PASS: health tiers, no proximity damage, safe stomp, side-contact damage, Breathglass, fall damage, longer Level 2, and completion")
+    print("PASS: multitouch joystick, health tiers, collision-only enemy hits, safe stomp, Breathglass, fall damage, longer Level 2, and completion")
     quit(0)

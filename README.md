@@ -1,4 +1,4 @@
-# ASHENWILD — Phase 3: Longer Hollow Routes
+# ASHENWILD — Phase 4: Touch Controls and Boss Roadmap
 
 A Godot 4 Android action-platformer prototype. This iteration makes both levels longer and more route-driven, adds a marked high-risk/high-reward health profile, fixes enemy contact damage, and adds fall damage and Breathglass rescue vents.
 
@@ -6,7 +6,7 @@ A Godot 4 Android action-platformer prototype. This iteration makes both levels 
 
 Level 1, **The Forgotten Hollow**, now spans several screens and moves through tiered stepping stones, two dangerous gaps, and the low-roof Echo Crawl. Collect the teal shard, touch the checkpoint, and reach the gate. The gate leads to Level 2, **The Pale Spine**, a longer route with four wider gaps, chained ascent/descent platforms, a second narrow-roof tunnel, four Ash Mites, a checkpoint, an amber shard, and the final gate.
 
-Touch controls remain: left/right on the lower left, jump and hit on the lower right, pause and restart at the top right. Keyboard fallback: A/D or arrows to move, Space/W/Up to jump, J/X to attack, P/Escape to pause, and R to restart. Holding separate fingers still supports movement plus jump or attack.
+The lower-left control is now a larger drag joystick: place a thumb in its ring and keep steering by holding left or right, even while the joystick finger moves. Use a separate finger for the enlarged **JUMP** or **ATTACK** button; this supports steering through an airborne jump or attack. Pause and restart remain at the top right. Keyboard fallback: A/D or arrows to move, Space/W/Up to jump, J/X to attack, P/Escape to pause, and R to restart. The smoke test simulates a joystick finger and two action fingers at once, then checks that releasing them clears every action.
 
 **New environmental mechanic — Breathglass vents:** a glowing updraft in the large pits can catch a falling wanderer and launch them back toward the platforms with a strong upward burst. They are a rescue option, not a substitute for landing safely; the vent has a short cooldown.
 
@@ -30,9 +30,13 @@ Ash Mites now damage the player **only on actual body collision**. Merely being 
 
 Hard landings also hurt: a downward impact of 650–829 px/s costs one heart; at 830 px/s or higher it costs two. Ordinary controlled jumps are below the threshold. Checkpoints and level transitions restore full health, size, and the safer full-health movement profile.
 
+## Inspiration and next milestone
+
+ASHENWILD aims for the broad feel of an atmospheric action-platform adventure—readable movement, exploration routes, dangerous enemies, and memorable boss encounters—while keeping its name, characters, art, setting, and mechanics original. A boss is **not** in this two-level test build yet. The next progression milestone is a third region and a distinct boss encounter after the first two routes, once the movement and controls have been play-tested.
+
 ## Testing status
 
-Tested against Godot **4.7.2 stable**: editor import, entry-scene launch, and automated smoke checks for both level transitions and completion, all three health profiles, no proximity damage, side-contact damage, safe stomping, fall damage, and Breathglass launch. Run the regression on desktop Godot with `godot --headless --path . --script res://tests/gameplay_smoke.gd`. The game has **not** been run on your phone in this session. The spacing, tunnel clearance, fall-damage feel, and touch-button comfort need a playtest in the Android Editor.
+Tested against Godot **4.7.2 stable**: editor import, entry-scene launch, and automated smoke checks for simultaneous joystick/jump/attack multi-touch, releasing controls, both level transitions and completion, all three health profiles, no proximity damage, side-contact damage, safe stomping, fall damage, and Breathglass launch. Run the regression on desktop Godot with `godot --headless --path . --script res://tests/gameplay_smoke.gd`. The game has **not** been run on your phone in this session. Joystick placement, tunnel clearance, fall-damage feel, and touch-button comfort need an Android Editor playtest.
 
 ## Import on Android
 
@@ -40,4 +44,4 @@ Extract the project archive into a new folder, then import/scan that folder (the
 
 ## Project contents
 
-`scenes/` contains the main, player, and enemy scenes. `scripts/main.gd` builds both routes and progression; `scripts/player.gd` owns movement, health, fall damage, Breathglass bursts, and attacks; `scripts/enemy.gd` owns patrol, pursuit, contact damage, stomps, and defeat. `tests/gameplay_smoke.gd` checks the key gameplay regressions headlessly. `assets/` contains the original wanderer and Ash Mite sprite sheets plus the cavern background. `scripts/scenery.gd` fits the backdrop to each longer route and provides a no-art fallback.
+`scenes/` contains the main, player, and enemy scenes. `scripts/main.gd` builds both routes and progression; `scripts/player.gd` owns movement, health, fall damage, Breathglass bursts, and attacks; `scripts/enemy.gd` owns patrol, pursuit, contact damage, stomps, and defeat; `scripts/touch_controls.gd` implements the drag joystick and concurrent touch buttons. `tests/gameplay_smoke.gd` checks the key gameplay regressions headlessly. `assets/` contains the original wanderer and Ash Mite sprite sheets plus the cavern background. `scripts/scenery.gd` fits the backdrop to each longer route and provides a no-art fallback.
