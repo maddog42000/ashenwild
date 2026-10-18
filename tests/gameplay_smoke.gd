@@ -149,9 +149,140 @@ func _run() -> void:
 
     main.shards = 1
     main._on_exit_entered(player)
+    await physics_frame
+    await physics_frame
+    if main.current_level != 3 or main.level_world_width < 2500.0 or not is_instance_valid(main.boss):
+        _fail("Level 2 did not open Region 3 and the Bellows Saint encounter")
+        return
+
+    var boss: Node = main.boss
+    if int(boss.get("health")) != 8 or bool(boss.get("active")):
+        _fail("Bellows Saint did not load dormant with eight core pips")
+        return
+    main._on_boss_threshold_entered(player)
+    await physics_frame
+    if not bool(boss.get("active")) or main.arena_gate_shape.disabled:
+        _fail("Crossing the arena threshold did not start the boss and close the gate")
+        return
+
+    boss.set("attack_kind", "pulse")
+    boss.call("_launch_attack")
+    boss.call("_fire_next_pulse")
+    if get_nodes_in_group("boss_projectiles").size() < 2:
+        _fail("Bellows Saint did not spawn its two outward floor pulses")
+        return
+    for projectile in get_nodes_in_group("boss_projectiles"):
+        projectile.queue_free()
+
+    boss.set("attack_kind", "ember")
+    boss.call("_launch_attack")
+    if boss.get("ember_markers").size() != 3:
+        _fail("Ember attack did not show three floor landing tells")
+        return
+    boss.call("_drop_embers")
+    if get_nodes_in_group("boss_projectiles").size() < 3:
+        _fail("Ember attack did not spawn the marked falling projectiles")
+        return
+    for projectile in get_nodes_in_group("boss_projectiles"):
+        projectile.queue_free()
+    boss.call("_clear_ember_markers")
+
+    var health_before_siphon: int = player.health
+    player.velocity.x = 0.0
+    boss.set("attack_kind", "siphon")
+    boss.call("_launch_attack")
+    boss.call("_apply_siphon", 0.1)
+    if player.health != health_before_siphon or absf(player.velocity.x) < 1.0:
+        _fail("Siphon did not pull by force alone without dealing damage")
+        return
+    boss.call("_open_core")
+    if main.vent_visuals[0].color.g < 0.7:
+        _fail("Siphon recovery did not switch the vents to their updraft cue")
+        return
+    boss.call("_close_core")
+
+    boss.call("take_damage", 1, 1)
+    if int(boss.get("health")) != 8:
+        _fail("Closed boss core accepted melee damage")
+        return
+
+    # Strike the actual exposed core point from the front-facing side.
+    boss.set("facing", 1)
+    var core_target: Vector2 = boss.global_position + Vector2(98, -50)
+    player.global_position = core_target + Vector2(12, 0)
+    player.facing = -1
+    player.set_physics_process(false)
+    boss.set("core_open", true)
+    player._attack()
+    await create_timer(0.22).timeout
+    if int(boss.get("health")) != 7:
+        _fail("Player melee did not hit the open core at its target point")
+        return
+
+    for hit in range(2):
+        boss.set("core_open", true)
+        boss.call("take_damage", 1, 1)
+    if int(boss.get("health")) != 5 or int(boss.get("phase")) != 2:
+        _fail("Boss did not enter Phase II at five core pips")
+        return
+    for hit in range(3):
+        boss.set("core_open", true)
+        boss.call("take_damage", 1, 1)
+    if int(boss.get("health")) != 2 or int(boss.get("phase")) != 3:
+        _fail("Boss did not enter Phase III at two core pips")
+        return
+    for hit in range(2):
+        boss.set("core_open", true)
+        boss.call("take_damage", 1, 1)
+    if int(boss.get("health")) != 0 or not bool(boss.get("is_defeated")):
+        _fail("Boss did not defeat cleanly after eight valid core hits")
+        return
+    await create_timer(1.05).timeout
+    await physics_frame
+    if not main.boss_defeated or not main.arena_gate_shape.disabled:
+        _fail("Boss victory did not open the arena gate and advance the exit state")
+        return
+    if not is_instance_valid(main.stillheart_area) or not is_instance_valid(main.stillheart_visual):
+        _fail("Boss victory did not drop the Stillheart reward")
+        return
+    player.global_position = main.boss.global_position
+    main._on_stillheart_entered(player, main.stillheart_area, main.stillheart_visual)
+    if not main.stillheart_collected:
+        _fail("The Stillheart pickup did not unlock the final progression state")
+        return
+
+    # Boss projectiles hurt only when their Area2D hitboxes overlap the player.
+    player.global_position = Vector2(1200, 418)
+    player.health = 3
+    player.invulnerable = false
+    player._update_health_scale()
+    var near_miss = load("res://scenes/boss_projectile.tscn").instantiate()
+    near_miss.call("configure", "pulse", Vector2.ZERO, 1650.0)
+    main.level_root.add_child(near_miss)
+    near_miss.global_position = Vector2(1800, 418)
+    await physics_frame
+    await physics_frame
+    if player.health != 3:
+        _fail("Boss projectile damaged the player without collision")
+        return
+    near_miss.queue_free()
+
+    var direct_hit = load("res://scenes/boss_projectile.tscn").instantiate()
+    direct_hit.call("configure", "pulse", Vector2.ZERO, 1650.0)
+    main.level_root.add_child(direct_hit)
+    direct_hit.global_position = player.global_position
+    await physics_frame
+    await physics_frame
+    if player.health != 2:
+        _fail("Boss projectile failed to damage the player on actual hitbox overlap")
+        return
+
+    player.set_physics_process(true)
+    main.shards = 1
+    main._on_exit_entered(player)
     if not main.completed:
-        _fail("Final gate failed to complete the prototype")
+        _fail("Hushvault exit failed to complete the three-region prototype")
         return
     paused = false
-    print("PASS: multitouch joystick, health tiers, collision-only enemy hits, safe stomp, Breathglass, fall damage, longer Level 2, and completion")
+    print("PASS: multitouch, health tiers, collision-only damage, stomp, vents, fall damage, longer routes, Bellows Saint phases/core, projectile hitboxes, and victory")
     quit(0)

@@ -1,6 +1,6 @@
 # Region 3 Boss Encounter — The Bellows Saint
 
-**Status:** encounter design, not yet implemented in the playable build  
+**Status:** implemented in the playable feature branch; awaiting review before merging to `main`
 **Placement:** the end of Region 3, after the two existing routes and a short approach section  
 **Design aim:** a memorable, readable boss that tests ASHENWILD's jump timing, air steering, low-heart speed, Breathglass vents, and safe enemy stomps without copying another game's character, art, or attacks.
 
@@ -99,6 +99,8 @@ A later upgrade can let the Stillheart **store one Breathglass burst** for use i
 6. Add regression tests for closed/open core damage, each phase threshold, actual projectile contact versus near miss, pulse avoidance, inhale without damage, death/retry, and final completion.
 7. Play-test on the Android editor with the larger virtual joystick. Confirm steering while jumping/attacking remains possible and every tell is readable on a phone screen.
 
-## Scope note
+## Implementation status
 
-This document is the boss design. It does **not** add Region 3, a playable boss, new art, or a boss-health HUD to the current merged `main` build. The current playable game remains the two-region version until this encounter is implemented and tested as a separate update.
+The first playable version is on the `region3-boss-implementation` branch. `scenes/bellows_saint.tscn` and `scripts/bellows_saint.gd` implement the eight-pip, three-phase encounter, core vulnerability, pulse and ember attacks, siphon pull, arena reset, and Stillheart drop. `scripts/boss_projectile.gd` handles collision-tested attacks. `scripts/main.gd` builds the Hushvault approach and arena, boss health HUD, entry gate, vents, reward pickup, and exit. The original Bellows Saint and effects atlases are in `assets/sprites/`.
+
+`tests/gameplay_smoke.gd` verifies the level transition, each phase threshold, core immunity and damage, spawned attack patterns, non-damaging siphon, actual projectile hits versus near-misses, Stillheart pickup, and completion. The implementation has not yet been play-tested on a physical Android device; the timing and readability values above still need phone testing before they are considered final.

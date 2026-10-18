@@ -206,6 +206,10 @@ func _attack() -> void:
         player_sprite.flip_h = facing < 0
         player_sprite.play("attack")
     for enemy in get_tree().get_nodes_in_group("enemies"):
+        if enemy.has_method("is_player_in_attack_range"):
+            if enemy.is_player_in_attack_range(self):
+                enemy.take_damage(1, facing)
+            continue
         var offset: Vector2 = enemy.global_position - global_position
         if absf(offset.y) <= 58.0 and absf(offset.x) <= 82.0 and offset.x * facing >= -8.0:
             if enemy.has_method("take_damage"):

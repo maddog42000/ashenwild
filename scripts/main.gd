@@ -2,6 +2,7 @@ extends Node2D
 
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const ENEMY_SCENE := preload("res://scenes/enemy.tscn")
+const BOSS_SCENE := preload("res://scenes/bellows_saint.tscn")
 
 var player: CharacterBody2D
 var camera: Camera2D
@@ -17,6 +18,17 @@ var shard_label: Label
 var message_label: Label
 var pause_panel: ColorRect
 var controls: Control
+var boss: Node2D
+var boss_label: Label
+var boss_bar: ProgressBar
+var boss_defeated := false
+var arena_gate_shape: CollisionShape2D
+var arena_gate_visual: Polygon2D
+var vent_visuals: Array[Polygon2D] = []
+var stillheart_collected := false
+var stillheart_area: Area2D
+var stillheart_visual: Node2D
+var message_generation := 0
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -71,6 +83,14 @@ func _build_level(level_id: int) -> void:
     move_child(level_root, 0)
     current_level = level_id
     shards = 0
+    boss = null
+    boss_defeated = false
+    stillheart_collected = false
+    stillheart_area = null
+    stillheart_visual = null
+    arena_gate_shape = null
+    arena_gate_visual = null
+    vent_visuals.clear()
 
     if level_id == 1:
         level_world_width = 3300.0
@@ -100,7 +120,7 @@ func _build_level(level_id: int) -> void:
         _make_vent(Vector2(600, 520))
         _make_vent(Vector2(1320, 520))
         _make_decorations([120.0, 455.0, 735.0, 1100.0, 1420.0, 1800.0, 2180.0, 2550.0, 2920.0])
-    else:
+    elif level_id == 2:
         level_world_width = 4300.0
         _make_scenery(level_world_width, true)
         _platform(Vector2(250, 462), Vector2(500, 50), Color(0.22, 0.20, 0.22))
@@ -139,9 +159,52 @@ func _build_level(level_id: int) -> void:
         _make_vent(Vector2(1625, 520))
         _make_vent(Vector2(3425, 520))
         _make_decorations([120.0, 470.0, 830.0, 1250.0, 1550.0, 1900.0, 2260.0, 2620.0, 2980.0, 3310.0, 3650.0, 4080.0])
+    else:
+        _build_region_three()
 
     _update_camera_limits()
     _refresh_hud()
+
+func _build_region_three() -> void:
+    level_world_width = 2600.0
+    _make_scenery(level_world_width, true)
+    var stone := Color(0.24, 0.21, 0.22)
+    var ledge := Color(0.40, 0.30, 0.27)
+
+    # Short approach with a low bell-throat hop before the checkpoint.
+    _platform(Vector2(190, 462), Vector2(380, 50), stone)
+    _platform(Vector2(430, 355), Vector2(120, 22), ledge)
+    _platform(Vector2(620, 462), Vector2(250, 50), stone)
+    _platform(Vector2(720, 357), Vector2(160, 16), ledge)
+    _platform(Vector2(695, 428), Vector2(34, 18), Color(0.55, 0.39, 0.30))
+    _platform(Vector2(835, 462), Vector2(220, 50), stone)
+
+    # The arena is about 1,420 units wide, with two vented gaps and raised escape ledges.
+    _platform(Vector2(1110, 462), Vector2(340, 50), stone)
+    _platform(Vector2(1650, 462), Vector2(500, 50), stone)
+    _platform(Vector2(2190, 462), Vector2(340, 50), stone)
+    _platform(Vector2(1210, 340), Vector2(170, 24), ledge)
+    _platform(Vector2(2090, 340), Vector2(170, 24), ledge)
+    _platform(Vector2(1650, 357), Vector2(340, 16), Color(0.34, 0.27, 0.25))
+    _platform(Vector2(1650, 428), Vector2(34, 18), Color(0.55, 0.39, 0.30))
+
+    _make_checkpoint(Vector2(850, 418))
+    _make_collectible(Vector2(620, 300))
+    _make_vent(Vector2(1340, 520))
+    _make_vent(Vector2(1960, 520))
+    _make_exit(Vector2(2470, 420))
+    _make_decorations([110.0, 320.0, 540.0, 740.0, 865.0, 1080.0, 1310.0, 1490.0, 1810.0, 1990.0, 2220.0, 2410.0])
+
+    boss = BOSS_SCENE.instantiate() as Node2D
+    boss.position = Vector2(1650, 418)
+    level_root.add_child(boss)
+    boss.connect("health_changed", Callable(self, "_on_boss_health_changed"))
+    boss.connect("encounter_started", Callable(self, "_on_boss_started"))
+    boss.connect("boss_message", Callable(self, "_on_boss_message"))
+    boss.connect("vent_state_changed", Callable(self, "_on_boss_vent_state_changed"))
+    boss.connect("defeated", Callable(self, "_on_boss_defeated"))
+    _on_boss_health_changed(8, 8)
+    _make_boss_gate(Vector2(920, 360), Vector2(995, 418))
 
 func _make_scenery(world_width: float, warmer: bool) -> void:
     var scenery := Node2D.new()
@@ -228,6 +291,22 @@ func _make_collectible(at: Vector2) -> void:
     var area := _new_trigger("Collectible", at, Vector2(42, 50))
     area.body_entered.connect(_on_collectible_entered.bind(area, glow))
 
+func _make_stillheart(at: Vector2) -> void:
+    stillheart_visual = Node2D.new()
+    stillheart_visual.name = "Stillheart"
+    stillheart_visual.position = at + Vector2(0, -28)
+    var halo := Polygon2D.new()
+    halo.polygon = PackedVector2Array([Vector2(0, -22), Vector2(17, 0), Vector2(0, 22), Vector2(-17, 0)])
+    halo.color = Color(0.96, 0.49, 0.24, 0.38)
+    stillheart_visual.add_child(halo)
+    var core := Polygon2D.new()
+    core.polygon = PackedVector2Array([Vector2(0, -15), Vector2(10, 0), Vector2(0, 15), Vector2(-10, 0)])
+    core.color = Color(1.0, 0.75, 0.39)
+    stillheart_visual.add_child(core)
+    level_root.add_child(stillheart_visual)
+    stillheart_area = _new_trigger("StillheartPickup", at, Vector2(58, 70))
+    stillheart_area.body_entered.connect(_on_stillheart_entered.bind(stillheart_area, stillheart_visual))
+
 func _make_exit(at: Vector2) -> void:
     var arch := Polygon2D.new()
     arch.position = at
@@ -247,6 +326,28 @@ func _make_enemy(at: Vector2) -> void:
     enemy.position = at
     level_root.add_child(enemy)
 
+func _make_boss_gate(gate_at: Vector2, threshold_at: Vector2) -> void:
+    var gate := StaticBody2D.new()
+    gate.name = "HushvaultArenaGate"
+    gate.position = gate_at
+    gate.collision_layer = 1
+    gate.collision_mask = 1
+    var shape := RectangleShape2D.new()
+    shape.size = Vector2(24, 154)
+    arena_gate_shape = CollisionShape2D.new()
+    arena_gate_shape.shape = shape
+    arena_gate_shape.disabled = true
+    gate.add_child(arena_gate_shape)
+    arena_gate_visual = Polygon2D.new()
+    arena_gate_visual.polygon = PackedVector2Array([Vector2(-12, -77), Vector2(12, -77), Vector2(12, 77), Vector2(-12, 77)])
+    arena_gate_visual.color = Color(0.70, 0.36, 0.22, 0.94)
+    arena_gate_visual.visible = false
+    gate.add_child(arena_gate_visual)
+    level_root.add_child(gate)
+
+    var threshold := _new_trigger("BossThreshold", threshold_at, Vector2(50, 120))
+    threshold.body_entered.connect(_on_boss_threshold_entered)
+
 func _make_hazard(at: Vector2, size: Vector2) -> void:
     var area := _new_trigger("PitHazard", at, size)
     area.body_entered.connect(_on_hazard_entered)
@@ -263,6 +364,7 @@ func _make_vent(at: Vector2) -> void:
     vent.polygon = PackedVector2Array([Vector2(-30, 15), Vector2(-20, -8), Vector2(-10, 15), Vector2(0, -18), Vector2(10, 15), Vector2(20, -8), Vector2(30, 15)])
     vent.color = Color(0.20, 0.82, 0.74, 0.8) if current_level == 1 else Color(0.98, 0.52, 0.30, 0.8)
     level_root.add_child(vent)
+    vent_visuals.append(vent)
     var area := _new_trigger("BreathglassVent", at, Vector2(82, 72))
     area.body_entered.connect(_on_vent_entered)
 
@@ -280,6 +382,31 @@ func _build_hud() -> void:
     shard_label.add_theme_font_size_override("font_size", 18)
     shard_label.add_theme_color_override("font_color", Color(0.49, 0.91, 0.79))
     layer.add_child(shard_label)
+    boss_label = Label.new()
+    boss_label.text = "THE BELLOWS SAINT"
+    boss_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+    boss_label.position = Vector2(-190, 68)
+    boss_label.size = Vector2(380, 30)
+    boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    boss_label.add_theme_font_size_override("font_size", 20)
+    boss_label.add_theme_color_override("font_color", Color(1.0, 0.70, 0.38))
+    boss_label.visible = false
+    layer.add_child(boss_label)
+    boss_bar = ProgressBar.new()
+    boss_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+    boss_bar.position = Vector2(-190, 100)
+    boss_bar.size = Vector2(380, 22)
+    boss_bar.max_value = 8
+    boss_bar.value = 8
+    boss_bar.show_percentage = false
+    var bar_back := StyleBoxFlat.new()
+    bar_back.bg_color = Color(0.09, 0.08, 0.10, 0.95)
+    boss_bar.add_theme_stylebox_override("background", bar_back)
+    var bar_fill := StyleBoxFlat.new()
+    bar_fill.bg_color = Color(0.91, 0.38, 0.20, 0.98)
+    boss_bar.add_theme_stylebox_override("fill", bar_fill)
+    boss_bar.visible = false
+    layer.add_child(boss_bar)
     message_label = Label.new()
     message_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
     message_label.position = Vector2(-300, 18)
@@ -324,14 +451,20 @@ func _on_health_changed(current: int, maximum: int) -> void:
 
 func _refresh_hud() -> void:
     if is_instance_valid(shard_label):
-        var level_name := "FORGOTTEN HOLLOW" if current_level == 1 else "THE PALE SPINE"
+        var level_name := "FORGOTTEN HOLLOW"
+        if current_level == 2:
+            level_name = "THE PALE SPINE"
+        elif current_level == 3:
+            level_name = "THE HUSHVAULT"
         shard_label.text = "LEVEL %d: %s  •  SHARD %d/1" % [current_level, level_name, shards]
 
 func _show_message(text: String, seconds: float) -> void:
+    message_generation += 1
+    var token := message_generation
     message_label.text = text
     message_label.visible = true
     await get_tree().create_timer(seconds).timeout
-    if is_instance_valid(message_label) and not completed:
+    if is_instance_valid(message_label) and token == message_generation and not completed:
         message_label.visible = false
 
 func _on_checkpoint_entered(body: Node2D, at: Vector2) -> void:
@@ -350,14 +483,32 @@ func _on_collectible_entered(body: Node2D, area: Area2D, visual: Node2D) -> void
     _refresh_hud()
     _show_message("SHARD FOUND", 2.0)
 
+func _on_stillheart_entered(body: Node2D, area: Area2D, visual: Node2D) -> void:
+    if body != player or not is_instance_valid(area):
+        return
+    stillheart_collected = true
+    area.queue_free()
+    visual.queue_free()
+    stillheart_area = null
+    stillheart_visual = null
+    _show_message("STILLHEART CLAIMED — THE KEY TO REGION FOUR", 3.0)
+
 func _on_exit_entered(body: Node2D) -> void:
     if body != player or completed:
+        return
+    if current_level == 3 and not boss_defeated:
+        _show_message("THE BELLOWS SAINT STILL GUARDS THE EXIT", 2.0)
+        return
+    if current_level == 3 and not stillheart_collected:
+        _show_message("CLAIM THE STILLHEART FROM THE BELL-KEEPER", 2.0)
         return
     if shards < 1:
         _show_message("The sealed gate needs this level's shard", 2.0)
         return
     if current_level == 1:
         _start_level_two()
+    elif current_level == 2:
+        _start_level_three()
     else:
         _complete_game()
 
@@ -372,12 +523,23 @@ func _start_level_two() -> void:
     _refresh_hud()
     _show_message("LEVEL 2: THE PALE SPINE  •  A harder crossing lies ahead", 3.0)
 
+func _start_level_three() -> void:
+    get_tree().paused = false
+    paused = false
+    completed = false
+    checkpoint_position = Vector2(120, 418)
+    player.respawn_position = checkpoint_position
+    _build_level(3)
+    player.respawn(checkpoint_position)
+    _refresh_hud()
+    _show_message("REGION 3: THE HUSHVAULT  •  Reach the bell-foundry and face its keeper", 3.0)
+
 func _complete_game() -> void:
     completed = true
     player.set_physics_process(false)
     get_tree().paused = true
     pause_panel.visible = true
-    pause_panel.get_child(0).text = "THE PALE SPINE CLEARED\nTap ↻ or press R to replay"
+    pause_panel.get_child(0).text = "THE HUSHVAULT CLEARED\nTap ↻ or press R to replay"
 
 func _on_hazard_entered(body: Node2D) -> void:
     if body == player:
@@ -394,5 +556,57 @@ func _on_fall_damage_taken(amount: int) -> void:
 func _on_enemy_stomped() -> void:
     _show_message("ASH MITE STOMP!", 1.0)
 
+func _on_boss_threshold_entered(body: Node2D) -> void:
+    if body != player or not is_instance_valid(boss) or bool(boss.get("active")):
+        return
+    boss.call("start_encounter")
+
+func _on_boss_started() -> void:
+    boss_label.visible = true
+    boss_bar.visible = true
+    if is_instance_valid(arena_gate_shape):
+        arena_gate_shape.set_deferred("disabled", false)
+    if is_instance_valid(arena_gate_visual):
+        arena_gate_visual.visible = true
+
+func _on_boss_health_changed(current: int, maximum: int) -> void:
+    if not is_instance_valid(boss_bar):
+        return
+    boss_bar.max_value = maximum
+    boss_bar.value = current
+
+func _on_boss_message(text: String) -> void:
+    _show_message(text, 1.8)
+
+func _on_boss_vent_state_changed(vent_state: String) -> void:
+    var tint := Color(0.98, 0.52, 0.30, 0.8)
+    if vent_state == "siphon":
+        tint = Color(0.72, 0.35, 0.83, 0.95)
+    elif vent_state == "updraft":
+        tint = Color(0.18, 0.88, 0.78, 0.95)
+    for vent in vent_visuals:
+        if is_instance_valid(vent):
+            vent.color = tint
+
+func _on_boss_defeated() -> void:
+    boss_defeated = true
+    boss_label.visible = false
+    boss_bar.visible = false
+    if is_instance_valid(arena_gate_shape):
+        arena_gate_shape.set_deferred("disabled", true)
+    if is_instance_valid(arena_gate_visual):
+        arena_gate_visual.visible = false
+    if is_instance_valid(boss):
+        _make_stillheart(boss.global_position)
+    _show_message("THE HUSHVAULT'S BELL GOES QUIET — THE EXIT IS OPEN", 3.0)
+
 func _on_player_died() -> void:
+    if is_instance_valid(boss) and not bool(boss.get("is_defeated")):
+        boss.call("reset_encounter")
+        boss_label.visible = false
+        boss_bar.visible = false
+        if is_instance_valid(arena_gate_shape):
+            arena_gate_shape.set_deferred("disabled", true)
+        if is_instance_valid(arena_gate_visual):
+            arena_gate_visual.visible = false
     get_tree().create_timer(0.65).timeout.connect(func(): player.respawn(checkpoint_position))
