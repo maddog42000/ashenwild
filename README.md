@@ -34,13 +34,15 @@ Hard landings also hurt: a downward impact of 650–829 px/s costs one heart; at
 
 ASHENWILD aims for the broad feel of an atmospheric action-platform adventure—readable movement, exploration routes, dangerous enemies, and memorable boss encounters—while keeping its name, characters, art, setting, and mechanics original. A boss is **not** in this two-level test build yet. The next progression milestone is a third region and a distinct boss encounter after the first two routes, once the movement and controls have been play-tested.
 
+The implementation-ready concept is in [`docs/region-3-boss-encounter.md`](docs/region-3-boss-encounter.md). It describes The Bellows Saint, a three-phase original boss built around readable resonance rhythms, Breathglass wind, and collision-tested attacks. The design is a document only; no boss code or art has been added yet.
+
 ## Testing status
 
 Tested against Godot **4.7.2 stable**: editor import, entry-scene launch, and automated smoke checks for simultaneous joystick/jump/attack multi-touch, releasing controls, both level transitions and completion, all three health profiles, no proximity damage, side-contact damage, safe stomping, fall damage, and Breathglass launch. Run the regression on desktop Godot with `godot --headless --path . --script res://tests/gameplay_smoke.gd`. The game has **not** been run on your phone in this session. Joystick placement, tunnel clearance, fall-damage feel, and touch-button comfort need an Android Editor playtest.
 
 ## Import on Android
 
-Extract the project archive into a new folder, then import/scan that folder (the one containing `project.godot`) in Godot Android Editor. Let the editor finish importing. The project is source, not an APK. The latest code is on the public GitHub `development` branch; `main` remains the stable baseline pending review.
+Extract the project archive into a new folder, then import/scan that folder (the one containing `project.godot`) in Godot Android Editor. Let the editor finish importing. The project is source, not an APK. The reviewed two-region build is now on the public GitHub `main` branch. The Region 3 boss design document is on the separate `region3-boss-design` branch and is not part of the playable build.
 
 ## Project contents
 
