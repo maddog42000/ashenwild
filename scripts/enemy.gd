@@ -1,15 +1,16 @@
 extends CharacterBody2D
 
-const SPEED := 70.0
+const SPEED := 78.0
 const GRAVITY := 1250.0
 const MAX_HEALTH := 2
+const CONTACT_DAMAGE_COOLDOWN_MS := 900
 
 var health := MAX_HEALTH
 var patrol_left := 0.0
 var patrol_right := 0.0
 var direction := -1
 var dead := false
-var hit_flash := 0
+var contact_ready_at := 0
 
 func _ready() -> void:
     collision_layer = 1
@@ -20,8 +21,8 @@ func _ready() -> void:
     var collider := CollisionShape2D.new()
     collider.shape = shape
     add_child(collider)
-    patrol_left = global_position.x - 90.0
-    patrol_right = global_position.x + 90.0
+    patrol_left = global_position.x - 110.0
+    patrol_right = global_position.x + 110.0
     add_to_group("enemies")
     _make_visual()
 
@@ -53,28 +54,40 @@ func _physics_process(delta: float) -> void:
     if dead:
         return
     var player := get_tree().get_first_node_in_group("player")
-    if player and not player.dead and global_position.distance_to(player.global_position) < 200.0:
+    if player and not player.dead and global_position.distance_to(player.global_position) < 180.0:
         direction = 1 if player.global_position.x > global_position.x else -1
-        if absf(player.global_position.x - global_position.x) > 35.0:
-            velocity.x = direction * SPEED * 1.15
-        else:
-            velocity.x = 0.0
-            if Time.get_ticks_msec() >= hit_flash:
-                player.take_damage(1, global_position.x)
-                hit_flash = Time.get_ticks_msec() + 1100
+        # Keep closing the gap; the physical body collision below is the only
+        # contact attack trigger. Merely passing overhead cannot hurt the player.
+        velocity.x = direction * SPEED
     else:
         if global_position.x < patrol_left:
             direction = 1
         elif global_position.x > patrol_right:
             direction = -1
-        velocity.x = direction * SPEED
+        velocity.x = direction * SPEED * 0.65
 
     if not is_on_floor():
         velocity.y += GRAVITY * delta
     move_and_slide()
+    _check_player_collisions()
     var sprite := get_node_or_null("Sprite") as Sprite2D
     if sprite:
         sprite.flip_h = direction < 0
+
+func _check_player_collisions() -> void:
+    for index in range(get_slide_collision_count()):
+        var collision := get_slide_collision(index)
+        var collider := collision.get_collider()
+        if collider is Node and collider.is_in_group("player"):
+            # If the player is above us, treat contact as a stomp, not a hit.
+            if collision.get_normal().y <= 0.65:
+                apply_contact_damage(collider)
+
+func apply_contact_damage(player: Node) -> void:
+    if dead or Time.get_ticks_msec() < contact_ready_at or player.dead:
+        return
+    contact_ready_at = Time.get_ticks_msec() + CONTACT_DAMAGE_COOLDOWN_MS
+    player.take_damage(1, global_position.x)
 
 func take_damage(amount: int, hit_direction: int) -> void:
     if dead:
