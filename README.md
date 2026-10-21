@@ -42,10 +42,12 @@ The automated checks are not a substitute for a real phone playtest. Touch sizin
 
 ## Android test build
 
-Open the folder containing `project.godot` in Godot 4.7.2 or later. Android export requires the matching Godot Android export templates, an Android SDK, and a JDK. See the [official Godot Android export guide](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html) for the required SDK packages and export setup.
+A signed **debug APK for ARM64 Android devices** is available with this iteration. It is a sideloadable test build, not a Play Store release, and it has not been installed on a physical phone in this session. The APK is provided as a separate download and is intentionally not committed to Git.
+
+The project includes an `Android Debug (ARM64)` export preset. Open the folder containing `project.godot` in Godot 4.7.2 or later, install the matching Godot Android templates and Android SDK/JDK, then select that preset to export your own APK. See the [official Godot Android export guide](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html) for setup details.
 
 ## Repository and project contents
 
-The Region 3 design PR has been merged into public `main`. The playable boss implementation is prepared on the separate `region3-boss-implementation` branch for review; it is not yet merged into `main`. The GitHub feature PR and downloadable test package accompany this iteration.
+The Region 3 design PR has been merged into public `main`. The playable boss implementation is on the separate `region3-boss-implementation` branch, with a draft review PR; it is not yet merged into `main`. The downloadable source package and debug APK accompany this iteration.
 
 `scenes/` contains the main, player, enemy, Bellows Saint, and boss projectile scenes. `scripts/main.gd` builds all three routes and progression. `scripts/bellows_saint.gd` owns the three-phase encounter, and `scripts/boss_projectile.gd` implements the collision-tested attacks. `scripts/player.gd` owns movement, health, fall damage, vents, and melee; `scripts/touch_controls.gd` implements the drag joystick and concurrent touch buttons. `tests/gameplay_smoke.gd` checks key gameplay regressions. `assets/sprites/` contains the original wanderer, Ash Mite, Bellows Saint, and boss-effect art; `scripts/scenery.gd` fits the cavern backdrop to each route.
