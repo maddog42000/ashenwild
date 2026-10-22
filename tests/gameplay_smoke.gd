@@ -14,6 +14,55 @@ func _run() -> void:
     await physics_frame
     var player: CharacterBody2D = main.player
     var controls: Control = main.controls
+    if main.game_started or not main.main_menu_panel.visible or player.visible or controls.visible or not paused:
+        _fail("The new title menu did not open before gameplay")
+        return
+    if main.music_player.stream == null or not (main.music_player.stream is AudioStreamOggVorbis) or not (main.music_player.stream as AudioStreamOggVorbis).loop:
+        _fail("Menu music did not load as a looping Ogg stream")
+        return
+    if main.game_music_player.stream == null or not (main.game_music_player.stream is AudioStreamMP3) or not (main.game_music_player.stream as AudioStreamMP3).loop:
+        _fail("User-provided gameplay MP3 did not load as a looping game stream")
+        return
+    if int(ProjectSettings.get_setting("display/window/handheld/orientation")) != 4:
+        _fail("Mobile orientation is not sensor landscape")
+        return
+    main._on_cheat_toggled(true, "speed_boost")
+    if not player.cheat_speed_boost or player.get_current_speed() != 403.0:
+        _fail("High-speed menu cheat did not enable its optional speed boost")
+        return
+    main._on_cheat_toggled(false, "speed_boost")
+    main._on_cheat_toggled(true, "infinite_jumps")
+    if player.get_current_jump_limit() < 3:
+        _fail("Unlimited-jumps menu cheat did not change the jump limit")
+        return
+    main._on_cheat_toggled(false, "infinite_jumps")
+    main._on_cheat_toggled(true, "invulnerable")
+    player.take_damage(1, player.global_position.x)
+    player._die()
+    if player.health != 3 or player.dead:
+        _fail("Invulnerability cheat did not block ordinary and pit death damage")
+        return
+    main._on_cheat_toggled(false, "invulnerable")
+    main._on_music_toggled(false)
+    if main.music_player.playing or main.game_music_player.playing:
+        _fail("Background music toggle did not mute both tracks")
+        return
+    main._on_music_toggled(true)
+    main._start_game()
+    if not main.game_started or not controls.visible or not player.visible:
+        _fail("Start button transition did not activate gameplay and touch controls")
+        return
+    if not main.game_music_player.playing or main.music_player.playing:
+        _fail("Starting the game did not switch from menu music to the supplied gameplay track")
+        return
+    main._toggle_pause()
+    if not main.paused or not main.pause_panel.visible or controls.visible or not main.game_music_player.stream_paused:
+        _fail("Pause menu did not pause gameplay and hide movement controls")
+        return
+    main._resume_game()
+    if main.paused or main.pause_panel.visible or not controls.visible or main.game_music_player.stream_paused:
+        _fail("Resume button did not return to active gameplay")
+        return
     var control_positions: Dictionary = controls._positions(controls.get_viewport_rect().size)
     var stick_touch := InputEventScreenTouch.new()
     stick_touch.index = 2
@@ -283,6 +332,13 @@ func _run() -> void:
     if not main.completed:
         _fail("Hushvault exit failed to complete the three-region prototype")
         return
+    main._return_to_main_menu()
+    if main.game_started or main.current_level != 1 or not main.main_menu_panel.visible or not paused:
+        _fail("Return-to-title did not reset the run and reopen the menu")
+        return
+    if not main.music_player.playing or main.game_music_player.playing:
+        _fail("Returning to the title did not restore menu music")
+        return
     paused = false
-    print("PASS: multitouch, health tiers, collision-only damage, stomp, vents, fall damage, longer routes, Bellows Saint phases/core, projectile hitboxes, and victory")
+    print("PASS: title menu, looping menu/gameplay music, three cheats, sensor landscape, pause/resume, return-to-title, multitouch, health tiers, collision-only damage, stomp, vents, fall damage, all three regions, Bellows Saint phases/core, projectile hitboxes, and victory")
     quit(0)

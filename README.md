@@ -1,6 +1,6 @@
-# ASHENWILD — Phase 5: The Hushvault
+# ASHENWILD — Phase 6: The Hushvault Menu Update
 
-A Godot 4 Android action-platformer prototype. This update adds a playable third region and the original Bellows Saint boss encounter after the two longer platforming routes. It keeps the existing health-scaled movement, double jump, collision-only enemy damage, large multitouch joystick, and Breathglass vents.
+A Godot 4 Android action-platformer prototype. This iteration adds a title menu, optional cheats, sensor-landscape phone rotation, a generated looping menu theme, and the user-supplied looping gameplay track, alongside the existing three-region adventure and Bellows Saint boss.
 
 ## Play flow and controls
 
@@ -9,6 +9,10 @@ Level 1, **The Forgotten Hollow**, crosses several screens of tiered platforms, 
 Level 2 now leads to Region 3, **The Hushvault**. A short approach ends at a checkpoint outside the arena. The bell-foundry has a low bell-throat hop, two vented floor gaps, raised side ledges, and the Bellows Saint chamber. Defeat the keeper, claim the dropped **Stillheart**, then reach the far exit.
 
 The lower-left control is a large drag joystick. Hold it in either direction while using separate fingers for **JUMP** or **ATTACK**, including in the air. Pause and restart remain at the top right. Keyboard fallback: A/D or arrows to move, Space/W/Up to jump, J/X to attack, P/Escape to pause, and R to restart.
+
+The game opens at a title screen. **BEGIN JOURNEY** starts the run; the pause menu offers Resume and Return to Title. Optional, off-by-default cheats are **Invulnerable**, **Unlimited air jumps**, and **High-speed mode**. The Background music toggle controls both the menu theme and gameplay track. The menu theme plays only on the title screen; the supplied `assets/audio/ashenwild_gameplay_theme.mp3` loops during gameplay and pauses with the game. Replace that file with another MP3 at the same path to change the gameplay music.
+
+Android orientation is set to **sensor landscape**, allowing either left- or right-landscape rotation while preventing portrait play.
 
 ## Bellows Saint encounter
 
@@ -30,7 +34,7 @@ Ash Mites and the Bellows Saint hurt the player only on actual body collision. M
 
 ## Testing
 
-Tested with Godot **4.7.2 stable**. The checked-in headless regression covers simultaneous joystick/jump/attack multitouch, movement health tiers, collision-only enemy damage, stomps, Breathglass, fall damage, longer routes, Level 3 progression, boss attack patterns, core vulnerability and phase thresholds, projectile near-misses versus direct hits, Stillheart pickup, and final completion.
+Tested with Godot **4.7.2 stable**. The checked-in headless regression covers title-menu startup, both looping audio streams, cheat toggles, sensor-landscape configuration, pause/resume and return-to-title, simultaneous joystick/jump/attack multitouch, movement health tiers, collision-only enemy damage, stomps, Breathglass, fall damage, longer routes, Level 3 progression, boss attack patterns, core vulnerability and phase thresholds, projectile near-misses versus direct hits, Stillheart pickup, and final completion.
 
 Run it from the project directory with:
 
@@ -50,4 +54,4 @@ The project includes an `Android Debug (ARM64)` export preset. Open the folder c
 
 The Region 3 design PR has been merged into public `main`. The playable boss implementation is on the separate `region3-boss-implementation` branch, with a draft review PR; it is not yet merged into `main`. The downloadable source package and debug APK accompany this iteration.
 
-`scenes/` contains the main, player, enemy, Bellows Saint, and boss projectile scenes. `scripts/main.gd` builds all three routes and progression. `scripts/bellows_saint.gd` owns the three-phase encounter, and `scripts/boss_projectile.gd` implements the collision-tested attacks. `scripts/player.gd` owns movement, health, fall damage, vents, and melee; `scripts/touch_controls.gd` implements the drag joystick and concurrent touch buttons. `tests/gameplay_smoke.gd` checks key gameplay regressions. `assets/sprites/` contains the original wanderer, Ash Mite, Bellows Saint, and boss-effect art; `scripts/scenery.gd` fits the cavern backdrop to each route.
+`scenes/` contains the main, player, enemy, Bellows Saint, and boss projectile scenes. `scripts/main.gd` builds all three routes, menus, music playback, and progression. `scripts/bellows_saint.gd` owns the three-phase encounter, and `scripts/boss_projectile.gd` implements the collision-tested attacks. `scripts/player.gd` owns movement, health, cheats, fall damage, vents, and melee; `scripts/touch_controls.gd` implements the drag joystick and concurrent touch buttons. `assets/audio/ashenwild_menu_theme.ogg` is the original generated title-screen loop; `assets/audio/ashenwild_gameplay_theme.mp3` is the user-provided in-game loop. `tests/gameplay_smoke.gd` checks key gameplay regressions. `assets/sprites/` contains the original wanderer, Ash Mite, Bellows Saint, and boss-effect art; `scripts/scenery.gd` fits the cavern backdrop to each route.

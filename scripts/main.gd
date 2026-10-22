@@ -3,6 +3,8 @@ extends Node2D
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const ENEMY_SCENE := preload("res://scenes/enemy.tscn")
 const BOSS_SCENE := preload("res://scenes/bellows_saint.tscn")
+const MENU_MUSIC_PATH := "res://assets/audio/ashenwild_menu_theme.ogg"
+const GAME_MUSIC_PATH := "res://assets/audio/ashenwild_gameplay_theme.mp3"
 
 var player: CharacterBody2D
 var camera: Camera2D
@@ -29,6 +31,16 @@ var stillheart_collected := false
 var stillheart_area: Area2D
 var stillheart_visual: Node2D
 var message_generation := 0
+var game_started := false
+var main_menu_panel: ColorRect
+var pause_title: Label
+var resume_button: Button
+var music_player: AudioStreamPlayer
+var game_music_player: AudioStreamPlayer
+var music_toggle_buttons: Array[CheckButton] = []
+var cheat_toggle_buttons: Array[CheckButton] = []
+var cheat_options := {"invulnerable": false, "infinite_jumps": false, "speed_boost": false}
+var menu_music_enabled := true
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -51,7 +63,8 @@ func _ready() -> void:
     _update_camera_limits()
     _setup_touch_controls()
     _refresh_hud()
-    _show_message("THE FORGOTTEN HOLLOW  •  Find the teal shard, then reach the gate", 3.0)
+    _setup_menu_music()
+    _show_main_menu()
 
 func _setup_actions() -> void:
     var definitions := {"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT], "jump": [KEY_SPACE, KEY_W, KEY_UP], "attack": [KEY_J, KEY_X], "pause": [KEY_ESCAPE, KEY_P], "restart": [KEY_R]}
@@ -419,15 +432,230 @@ func _build_hud() -> void:
     pause_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     pause_panel.color = Color(0.02, 0.03, 0.05, 0.78)
     pause_panel.visible = false
+    pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
     layer.add_child(pause_panel)
-    var pause_label := Label.new()
-    pause_label.text = "PAUSED\nTap the pause icon or press P to continue"
-    pause_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-    pause_label.position = Vector2(-240, -45)
-    pause_label.size = Vector2(480, 100)
-    pause_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    pause_label.add_theme_font_size_override("font_size", 26)
-    pause_panel.add_child(pause_label)
+    var pause_center := CenterContainer.new()
+    pause_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    pause_panel.add_child(pause_center)
+    var pause_card := PanelContainer.new()
+    pause_card.custom_minimum_size = Vector2(410, 410)
+    _style_card(pause_card)
+    pause_center.add_child(pause_card)
+    var pause_stack := VBoxContainer.new()
+    pause_stack.add_theme_constant_override("separation", 10)
+    pause_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+    pause_card.add_child(pause_stack)
+    pause_title = _make_heading("PAUSED", 30)
+    pause_stack.add_child(pause_title)
+    resume_button = _make_menu_button("RESUME", _resume_game)
+    pause_stack.add_child(resume_button)
+    var pause_cheats := _make_cheat_toggles()
+    pause_stack.add_child(pause_cheats)
+    var pause_music := _make_music_toggle()
+    pause_stack.add_child(pause_music)
+    var return_button := _make_menu_button("RETURN TO TITLE", _return_to_main_menu)
+    pause_stack.add_child(return_button)
+
+    main_menu_panel = ColorRect.new()
+    main_menu_panel.name = "MainMenu"
+    main_menu_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    main_menu_panel.color = Color(0.015, 0.025, 0.045, 0.90)
+    main_menu_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+    main_menu_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+    layer.add_child(main_menu_panel)
+    var menu_center := CenterContainer.new()
+    menu_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    main_menu_panel.add_child(menu_center)
+    var menu_card := PanelContainer.new()
+    menu_card.custom_minimum_size = Vector2(480, 480)
+    _style_card(menu_card)
+    menu_center.add_child(menu_card)
+    var menu_stack := VBoxContainer.new()
+    menu_stack.add_theme_constant_override("separation", 12)
+    menu_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+    menu_card.add_child(menu_stack)
+    menu_stack.add_child(_make_heading("ASHENWILD", 42))
+    var subtitle := _make_heading("THE HUSHVAULT", 17)
+    subtitle.add_theme_color_override("font_color", Color(0.65, 0.82, 0.75))
+    menu_stack.add_child(subtitle)
+    menu_stack.add_child(_make_menu_button("BEGIN JOURNEY", _start_game))
+    var cheat_heading := _make_heading("OPTIONAL CHEATS", 16)
+    cheat_heading.add_theme_color_override("font_color", Color(0.94, 0.70, 0.42))
+    menu_stack.add_child(cheat_heading)
+    menu_stack.add_child(_make_cheat_toggles())
+    menu_stack.add_child(_make_music_toggle())
+    var hint := _make_heading("A/D or stick · Jump · Attack · P to pause", 13)
+    hint.add_theme_color_override("font_color", Color(0.69, 0.73, 0.72))
+    menu_stack.add_child(hint)
+
+func _style_card(card: PanelContainer) -> void:
+    var style := StyleBoxFlat.new()
+    style.bg_color = Color(0.045, 0.065, 0.075, 0.97)
+    style.border_color = Color(0.37, 0.57, 0.48, 0.9)
+    style.set_border_width_all(2)
+    style.set_corner_radius_all(14)
+    style.content_margin_left = 24
+    style.content_margin_right = 24
+    style.content_margin_top = 22
+    style.content_margin_bottom = 22
+    card.add_theme_stylebox_override("panel", style)
+
+func _make_heading(text: String, font_size: int) -> Label:
+    var label := Label.new()
+    label.text = text
+    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    label.add_theme_font_size_override("font_size", font_size)
+    label.add_theme_color_override("font_color", Color(0.94, 0.89, 0.75))
+    label.custom_minimum_size.y = float(font_size + 8)
+    return label
+
+func _make_menu_button(text: String, callback: Callable) -> Button:
+    var button := Button.new()
+    button.text = text
+    button.custom_minimum_size = Vector2(300, 50)
+    button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    button.add_theme_font_size_override("font_size", 20)
+    button.pressed.connect(callback)
+    return button
+
+func _make_cheat_toggles() -> VBoxContainer:
+    var stack := VBoxContainer.new()
+    stack.add_theme_constant_override("separation", 1)
+    _add_cheat_toggle(stack, "Invulnerable", "invulnerable")
+    _add_cheat_toggle(stack, "Unlimited air jumps", "infinite_jumps")
+    _add_cheat_toggle(stack, "High-speed mode", "speed_boost")
+    return stack
+
+func _add_cheat_toggle(parent: VBoxContainer, label: String, cheat_key: String) -> void:
+    var toggle := CheckButton.new()
+    toggle.text = label
+    toggle.button_pressed = bool(cheat_options[cheat_key])
+    toggle.add_theme_font_size_override("font_size", 16)
+    toggle.toggled.connect(_on_cheat_toggled.bind(cheat_key))
+    parent.add_child(toggle)
+    cheat_toggle_buttons.append(toggle)
+
+func _make_music_toggle() -> CheckButton:
+    var toggle := CheckButton.new()
+    toggle.text = "Background music"
+    toggle.button_pressed = menu_music_enabled
+    toggle.add_theme_font_size_override("font_size", 16)
+    toggle.toggled.connect(_on_music_toggled)
+    music_toggle_buttons.append(toggle)
+    return toggle
+
+func _setup_menu_music() -> void:
+    music_player = AudioStreamPlayer.new()
+    music_player.name = "MenuMusic"
+    music_player.volume_db = -14.0
+    music_player.process_mode = Node.PROCESS_MODE_ALWAYS
+    if ResourceLoader.exists(MENU_MUSIC_PATH):
+        music_player.stream = load(MENU_MUSIC_PATH) as AudioStream
+        if music_player.stream is AudioStreamOggVorbis:
+            (music_player.stream as AudioStreamOggVorbis).loop = true
+    add_child(music_player)
+
+    game_music_player = AudioStreamPlayer.new()
+    game_music_player.name = "GameplayMusic"
+    game_music_player.volume_db = -12.0
+    game_music_player.process_mode = Node.PROCESS_MODE_ALWAYS
+    if ResourceLoader.exists(GAME_MUSIC_PATH):
+        game_music_player.stream = load(GAME_MUSIC_PATH) as AudioStream
+        if game_music_player.stream is AudioStreamMP3:
+            (game_music_player.stream as AudioStreamMP3).loop = true
+    add_child(game_music_player)
+
+func _show_main_menu() -> void:
+    game_started = false
+    paused = false
+    completed = false
+    get_tree().paused = true
+    level_root.visible = false
+    player.visible = false
+    player.set_physics_process(false)
+    health_label.visible = false
+    shard_label.visible = false
+    controls.visible = false
+    controls.set_process_input(false)
+    pause_panel.visible = false
+    main_menu_panel.visible = true
+    _update_music_playback()
+
+func _start_game() -> void:
+    game_started = true
+    paused = false
+    completed = false
+    get_tree().paused = false
+    main_menu_panel.visible = false
+    pause_panel.visible = false
+    level_root.visible = true
+    player.visible = true
+    player.set_physics_process(true)
+    health_label.visible = true
+    shard_label.visible = true
+    controls.visible = true
+    controls.set_process_input(true)
+    resume_button.visible = true
+    _update_music_playback()
+    _show_message("THE FORGOTTEN HOLLOW  •  Find the teal shard, then reach the gate", 3.0)
+
+func _resume_game() -> void:
+    if completed:
+        return
+    paused = false
+    get_tree().paused = false
+    pause_panel.visible = false
+    controls.visible = true
+    controls.set_process_input(true)
+    resume_button.visible = true
+    _update_music_playback()
+
+func _return_to_main_menu() -> void:
+    get_tree().paused = false
+    paused = false
+    completed = false
+    boss_defeated = false
+    checkpoint_position = Vector2(120, 418)
+    player.respawn_position = checkpoint_position
+    player.respawn(checkpoint_position)
+    _build_level(1)
+    _refresh_hud()
+    _show_main_menu()
+
+func _on_cheat_toggled(enabled: bool, cheat_key: String) -> void:
+    cheat_options[cheat_key] = enabled
+    player.set("cheat_" + cheat_key, enabled)
+    for toggle in cheat_toggle_buttons:
+        if is_instance_valid(toggle):
+            var matches := (cheat_key == "invulnerable" and toggle.text == "Invulnerable") or (cheat_key == "infinite_jumps" and toggle.text == "Unlimited air jumps") or (cheat_key == "speed_boost" and toggle.text == "High-speed mode")
+            if matches:
+                toggle.set_pressed_no_signal(enabled)
+
+func _on_music_toggled(enabled: bool) -> void:
+    menu_music_enabled = enabled
+    for toggle in music_toggle_buttons:
+        if is_instance_valid(toggle):
+            toggle.set_pressed_no_signal(enabled)
+    _update_music_playback()
+
+func _update_music_playback() -> void:
+    if not is_instance_valid(music_player) or not is_instance_valid(game_music_player):
+        return
+    if game_started:
+        music_player.stop()
+        if not menu_music_enabled or game_music_player.stream == null:
+            game_music_player.stop()
+        else:
+            if not game_music_player.playing:
+                game_music_player.play()
+            game_music_player.stream_paused = paused
+    else:
+        game_music_player.stop()
+        if menu_music_enabled and music_player.stream != null:
+            if not music_player.playing:
+                music_player.play()
+        elif music_player.playing:
+            music_player.stop()
 
 func _process(_delta: float) -> void:
     if Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("touch_pause"):
@@ -436,11 +664,17 @@ func _process(_delta: float) -> void:
         _restart_level()
 
 func _toggle_pause() -> void:
-    if completed:
+    if not game_started or completed:
         return
     paused = not paused
     get_tree().paused = paused
     pause_panel.visible = paused
+    controls.visible = not paused
+    controls.set_process_input(not paused)
+    if paused:
+        pause_title.text = "PAUSED"
+        resume_button.visible = true
+    _update_music_playback()
 
 func _restart_level() -> void:
     get_tree().paused = false
@@ -536,10 +770,15 @@ func _start_level_three() -> void:
 
 func _complete_game() -> void:
     completed = true
+    paused = true
     player.set_physics_process(false)
     get_tree().paused = true
     pause_panel.visible = true
-    pause_panel.get_child(0).text = "THE HUSHVAULT CLEARED\nTap ↻ or press R to replay"
+    controls.visible = false
+    controls.set_process_input(false)
+    pause_title.text = "THE HUSHVAULT CLEARED"
+    resume_button.visible = false
+    _update_music_playback()
 
 func _on_hazard_entered(body: Node2D) -> void:
     if body == player:
