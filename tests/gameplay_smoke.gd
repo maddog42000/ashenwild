@@ -7,6 +7,12 @@ func _fail(message: String) -> void:
     push_error(message)
     quit(1)
 
+func _has_platform_at(main: Node, expected: Vector2) -> bool:
+    for child in main.level_root.get_children():
+        if child is Node2D and child.is_in_group("platforms") and child.position.distance_to(expected) < 1.0:
+            return true
+    return false
+
 func _run() -> void:
     var packed := load("res://scenes/main.tscn") as PackedScene
     var main := packed.instantiate()
@@ -102,11 +108,44 @@ func _run() -> void:
     if not Input.is_action_pressed("move_right") or Input.is_action_pressed("move_left"):
         _fail("Virtual joystick did not switch cleanly to right steering")
         return
+    stick_touch.pressed = true
+    controls._input(stick_touch)
+    stick_drag.position = control_positions["stick"] + Vector2(52, 0)
+    controls._input(stick_drag)
+    if not Input.is_action_pressed("move_right"):
+        _fail("Virtual joystick did not remain held while adding combat touch inputs")
+        return
+    var bow_touch := InputEventScreenTouch.new()
+    bow_touch.index = 5
+    bow_touch.pressed = true
+    bow_touch.position = control_positions["bow_fire"]
+    controls._input(bow_touch)
+    var shield_touch := InputEventScreenTouch.new()
+    shield_touch.index = 6
+    shield_touch.pressed = true
+    shield_touch.position = control_positions["shield"]
+    controls._input(shield_touch)
+    if not Input.is_action_pressed("move_right") or not Input.is_action_pressed("bow_fire") or not Input.is_action_pressed("shield"):
+        _fail("Movement, bow, and shield touch buttons did not register as independent held actions")
+        return
+    bow_touch.pressed = false
+    controls._input(bow_touch)
+    shield_touch.pressed = false
+    controls._input(shield_touch)
+    if not Input.is_action_pressed("move_right"):
+        _fail("Releasing bow and shield also cleared the independent movement finger")
+        return
     stick_touch.pressed = false
     controls._input(stick_touch)
+    if Input.is_action_pressed("move_right") or Input.is_action_pressed("bow_fire") or Input.is_action_pressed("shield"):
+        _fail("A touch release left movement, bow, or shield input stuck")
+        return
 
     if main.current_level != 1 or main.level_world_width < 3000.0:
         _fail("Level 1 did not load at the expected expanded size")
+        return
+    if not _has_platform_at(main, Vector2(2010, 280)) or not _has_platform_at(main, Vector2(2330, 615)):
+        _fail("Level 1 is missing its upward-left ridge or safe lower tunnel shelf")
         return
     if player.get_current_speed() != 260.0 or player.get_current_gravity() != 950.0:
         _fail("Full-health movement profile is incorrect")
@@ -169,14 +208,83 @@ func _run() -> void:
         _fail("Breathglass did not launch the player upward")
         return
 
-    # Collecting the first shard and entering its gate opens the longer sequel level.
     player.set_physics_process(false)
+    var bow_target: Node = enemies[0]
+    bow_target.health = 2
+    player.global_position = bow_target.global_position + Vector2(-170, 0)
+    player.velocity = Vector2.ZERO
+    player.facing = 1
+    player.bow_ready_at = 0
+    player._shoot_bow()
+    await create_timer(0.25).timeout
+    if int(bow_target.health) != 1:
+        _fail("A swept bow arrow did not damage an Ash Mite on contact")
+        return
+    player.activate_bow_pickup("rapid")
+    if player.get_current_bow_cooldown_ms() != 260:
+        _fail("Quickstring pickup did not shorten bow firing cooldown")
+        return
+    player.rapid_bow_timer.start(0.02)
+    await create_timer(0.05).timeout
+    if player.get_current_bow_cooldown_ms() != 600:
+        _fail("Quickstring cooldown did not return to normal after the timer expired")
+        return
+    player.activate_bow_pickup("spread")
+    if player.get_current_bow_arrow_count() != 3:
+        _fail("Fanstring pickup did not enable a three-arrow spread volley")
+        return
+    player.bow_ready_at = 0
+    var arrows_before: int = get_nodes_in_group("player_arrows").size()
+    player._shoot_bow()
+    if get_nodes_in_group("player_arrows").size() != arrows_before + 3:
+        _fail("Fanstring did not fire three arrows while spending one volley")
+        return
+    for arrow in get_nodes_in_group("player_arrows"):
+        arrow.queue_free()
+    await physics_frame
+
+    # One-heart gravity is the harshest profile: drop onto both tunnel shelves without splattering.
+    player.health = 1
+    player._update_health_scale()
+    player.global_position = Vector2(2120, 418)
+    player.velocity = Vector2.ZERO
+    player.set_physics_process(true)
+    Input.action_release("move_left")
+    Input.action_release("move_right")
+    var landed_on_catch_shelf := false
+    for frame in range(60):
+        await physics_frame
+        if player.is_on_floor():
+            landed_on_catch_shelf = true
+            break
+    if not landed_on_catch_shelf or player.health != 1 or player.global_position.y > 560.0:
+        _fail("The first downward catch shelf was missed or caused excessive fall damage at one heart")
+        return
+    Input.action_press("move_right")
+    var landed_on_lower_shelf := false
+    for frame in range(60):
+        await physics_frame
+        if player.is_on_floor() and player.global_position.y > 550.0:
+            landed_on_lower_shelf = true
+            break
+    Input.action_release("move_right")
+    if not landed_on_lower_shelf or player.health != 1 or player.global_position.y > 620.0:
+        _fail("The second down-tunnel ledge did not provide a safe one-heart landing")
+        return
+    player.set_physics_process(false)
+    player.health = 3
+    player._update_health_scale()
+
+    # Collecting the first shard and entering its gate opens the longer sequel level.
     main.shards = 1
     main._on_exit_entered(player)
     await physics_frame
     await physics_frame
     if main.current_level != 2 or main.level_world_width < 4200.0 or get_nodes_in_group("enemies").size() < 4:
         _fail("Level 2 did not load with the longer route and enemy set")
+        return
+    if not _has_platform_at(main, Vector2(3290, 285)) or not _has_platform_at(main, Vector2(2480, 585)):
+        _fail("Level 2 is missing its upward-left ridge or safe downward catch ledge")
         return
     if player.health != 3:
         _fail("Level transition should restore all health")
@@ -202,6 +310,9 @@ func _run() -> void:
     await physics_frame
     if main.current_level != 3 or main.level_world_width < 2500.0 or not is_instance_valid(main.boss):
         _fail("Level 2 did not open Region 3 and the Bellows Saint encounter")
+        return
+    if not _has_platform_at(main, Vector2(1430, 150)) or not _has_platform_at(main, Vector2(1340, 565)):
+        _fail("The Hushvault is missing its high return path or Breathglass catch ledge")
         return
 
     var boss: Node = main.boss
@@ -254,6 +365,27 @@ func _run() -> void:
     if int(boss.get("health")) != 8:
         _fail("Closed boss core accepted melee damage")
         return
+
+    # A real arrow must pass through the boss's side only when it hits the exposed core.
+    boss.set("facing", -1)
+    player.set_physics_process(false)
+    player.global_position = boss.global_position + Vector2(-150, -50)
+    player.facing = 1
+    player.bow_ready_at = 0
+    player._shoot_bow()
+    await create_timer(0.2).timeout
+    if int(boss.get("health")) != 8:
+        _fail("Bow arrow damaged the Bellows Saint while its core was closed")
+        return
+    boss.call("_open_core")
+    player.bow_ready_at = 0
+    player._shoot_bow()
+    await create_timer(0.2).timeout
+    if int(boss.get("health")) != 7:
+        _fail("Bow arrow failed to damage the actually exposed Bellows Saint core")
+        return
+    boss.call("reset_encounter")
+    boss.call("start_encounter")
 
     # Strike the actual exposed core point from the front-facing side.
     boss.set("facing", 1)
@@ -320,10 +452,35 @@ func _run() -> void:
     direct_hit.call("configure", "pulse", Vector2.ZERO, 1650.0)
     main.level_root.add_child(direct_hit)
     direct_hit.global_position = player.global_position
+    player.facing = 1
+    Input.action_press("shield")
+    await physics_frame
+    await physics_frame
+    if player.health != 3 or player.shield_durability != 2:
+        _fail("Held shield did not block a projectile hit and spend exactly one durability")
+        return
+    for block_index in range(2):
+        var blocked_shot = load("res://scenes/boss_projectile.tscn").instantiate()
+        blocked_shot.call("configure", "pulse", Vector2.ZERO, 1650.0)
+        main.level_root.add_child(blocked_shot)
+        blocked_shot.global_position = player.global_position
+        await physics_frame
+        await physics_frame
+        if player.health != 3 or player.shield_durability != 1 - block_index:
+            _fail("Shield durability did not decrement once for each separate projectile")
+            return
+    Input.action_release("shield")
+    if player.shield_durability != 0:
+        _fail("Shield was not depleted after exactly three blocked projectiles")
+        return
+    var fourth_hit = load("res://scenes/boss_projectile.tscn").instantiate()
+    fourth_hit.call("configure", "pulse", Vector2.ZERO, 1650.0)
+    main.level_root.add_child(fourth_hit)
+    fourth_hit.global_position = player.global_position
     await physics_frame
     await physics_frame
     if player.health != 2:
-        _fail("Boss projectile failed to damage the player on actual hitbox overlap")
+        _fail("A projectile was not allowed through after shield durability ran out")
         return
 
     player.set_physics_process(true)
@@ -340,5 +497,5 @@ func _run() -> void:
         _fail("Returning to the title did not restore menu music")
         return
     paused = false
-    print("PASS: title menu, looping menu/gameplay music, three cheats, sensor landscape, pause/resume, return-to-title, multitouch, health tiers, collision-only damage, stomp, vents, fall damage, all three regions, Bellows Saint phases/core, projectile hitboxes, and victory")
+    print("PASS: title/menu audio, cheats, sensor landscape, multitouch joystick+jump+melee+bow+shield, health tiers, collision-only damage, stomp, fall damage, one-heart safe tunnel drops, all-region climb/return routes, timed quickstring/fanstring, swept arrows vs Ash Mites and exposed boss core, three-charge frontal guard, boss phases/projectiles, Stillheart, and victory")
     quit(0)

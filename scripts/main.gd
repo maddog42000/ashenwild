@@ -3,6 +3,7 @@ extends Node2D
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const ENEMY_SCENE := preload("res://scenes/enemy.tscn")
 const BOSS_SCENE := preload("res://scenes/bellows_saint.tscn")
+const PLAYER_ARROW_SCENE := preload("res://scenes/player_arrow.tscn")
 const MENU_MUSIC_PATH := "res://assets/audio/ashenwild_menu_theme.ogg"
 const GAME_MUSIC_PATH := "res://assets/audio/ashenwild_gameplay_theme.mp3"
 
@@ -17,6 +18,7 @@ var paused := false
 var completed := false
 var health_label: Label
 var shard_label: Label
+var combat_label: Label
 var message_label: Label
 var pause_panel: ColorRect
 var controls: Control
@@ -54,6 +56,9 @@ func _ready() -> void:
     player.died.connect(_on_player_died)
     player.fall_damage_taken.connect(_on_fall_damage_taken)
     player.enemy_stomped.connect(_on_enemy_stomped)
+    player.arrow_shot_requested.connect(_on_arrow_shot_requested)
+    player.bow_state_changed.connect(_refresh_combat_hud)
+    player.shield_state_changed.connect(_on_shield_state_changed)
     _on_health_changed(player.health, player.MAX_HEALTH)
     camera = Camera2D.new()
     camera.position_smoothing_enabled = true
@@ -67,7 +72,7 @@ func _ready() -> void:
     _show_main_menu()
 
 func _setup_actions() -> void:
-    var definitions := {"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT], "jump": [KEY_SPACE, KEY_W, KEY_UP], "attack": [KEY_J, KEY_X], "pause": [KEY_ESCAPE, KEY_P], "restart": [KEY_R]}
+    var definitions := {"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT], "jump": [KEY_SPACE, KEY_W, KEY_UP], "attack": [KEY_J, KEY_X], "bow_fire": [KEY_K, KEY_C], "shield": [KEY_L, KEY_V], "pause": [KEY_ESCAPE, KEY_P], "restart": [KEY_R]}
     for action in definitions:
         if not InputMap.has_action(action):
             InputMap.add_action(action)
@@ -111,13 +116,25 @@ func _build_level(level_id: int) -> void:
         _platform(Vector2(245, 462), Vector2(490, 50), Color(0.19, 0.24, 0.24))
         _platform(Vector2(935, 462), Vector2(470, 50), Color(0.19, 0.24, 0.24))
         _platform(Vector2(1645, 462), Vector2(550, 50), Color(0.19, 0.24, 0.24))
-        _platform(Vector2(2610, 462), Vector2(1380, 50), Color(0.19, 0.24, 0.24))
+        _platform(Vector2(2010, 462), Vector2(180, 50), Color(0.19, 0.24, 0.24))
+        _platform(Vector2(3000, 462), Vector2(600, 50), Color(0.19, 0.24, 0.24))
         _platform(Vector2(590, 354), Vector2(150, 24), Color(0.31, 0.37, 0.34))
         _platform(Vector2(815, 278), Vector2(150, 24), Color(0.31, 0.37, 0.34))
         _platform(Vector2(1050, 345), Vector2(145, 24), Color(0.31, 0.37, 0.34))
         _platform(Vector2(1280, 278), Vector2(170, 24), Color(0.31, 0.37, 0.34))
         _platform(Vector2(1510, 323), Vector2(170, 24), Color(0.31, 0.37, 0.34))
         _platform(Vector2(1760, 246), Vector2(180, 24), Color(0.31, 0.37, 0.34))
+        # Wisp Ladder: climb up, traverse back left, then drop shelf-by-shelf.
+        _platform(Vector2(1840, 355), Vector2(150, 22), Color(0.33, 0.46, 0.39))
+        _platform(Vector2(2010, 280), Vector2(150, 22), Color(0.33, 0.46, 0.39))
+        _platform(Vector2(2130, 190), Vector2(150, 22), Color(0.33, 0.46, 0.39))
+        _platform(Vector2(1940, 210), Vector2(150, 22), Color(0.33, 0.46, 0.39))
+        _platform(Vector2(1580, 355), Vector2(150, 22), Color(0.33, 0.46, 0.39))
+        # The Echo Crawl drops into a short catch-shelf tunnel and climbs back out.
+        _platform(Vector2(2160, 540), Vector2(156, 18), Color(0.39, 0.47, 0.41))
+        _platform(Vector2(2330, 615), Vector2(156, 18), Color(0.39, 0.47, 0.41))
+        _platform(Vector2(2500, 540), Vector2(156, 18), Color(0.39, 0.47, 0.41))
+        _platform(Vector2(2615, 475), Vector2(140, 18), Color(0.39, 0.47, 0.41))
         # Echo Crawl: tap-jump over the low stone while staying under the roof.
         _platform(Vector2(2300, 357), Vector2(520, 16), Color(0.25, 0.29, 0.29))
         _platform(Vector2(2285, 428), Vector2(34, 18), Color(0.48, 0.40, 0.34))
@@ -125,11 +142,14 @@ func _build_level(level_id: int) -> void:
         _platform(Vector2(2760, 275), Vector2(180, 24), Color(0.31, 0.37, 0.34))
         _make_checkpoint(Vector2(760, 418))
         _make_collectible(Vector2(1760, 198))
+        _make_bow_pickup(Vector2(2130, 152), "rapid")
+        _make_bow_pickup(Vector2(1760, 206), "spread")
         _make_exit(Vector2(3180, 420))
         _make_enemy(Vector2(1050, 417))
         _make_enemy(Vector2(1970, 417))
         _make_hazard(Vector2(595, 635), Vector2(220, 70))
         _make_hazard(Vector2(1280, 635), Vector2(220, 70))
+        _make_hazard(Vector2(2340, 730), Vector2(480, 70))
         _make_vent(Vector2(600, 520))
         _make_vent(Vector2(1320, 520))
         _make_decorations([120.0, 455.0, 735.0, 1100.0, 1420.0, 1800.0, 2180.0, 2550.0, 2920.0])
@@ -152,6 +172,14 @@ func _build_level(level_id: int) -> void:
         _platform(Vector2(2960, 225), Vector2(180, 24), Color(0.38, 0.30, 0.27))
         _platform(Vector2(3220, 322), Vector2(180, 24), Color(0.38, 0.30, 0.27))
         _platform(Vector2(3460, 270), Vector2(170, 24), Color(0.38, 0.30, 0.27))
+        # Pale Spine return ridge: rise, double back left, then descend to the tunnel lip.
+        _platform(Vector2(3090, 360), Vector2(150, 22), Color(0.48, 0.37, 0.31))
+        _platform(Vector2(3290, 285), Vector2(150, 22), Color(0.48, 0.37, 0.31))
+        _platform(Vector2(3120, 185), Vector2(150, 22), Color(0.48, 0.37, 0.31))
+        _platform(Vector2(2910, 275), Vector2(150, 22), Color(0.48, 0.37, 0.31))
+        # Drop passage in the central gap: every fall is caught before the hazard shelf.
+        _platform(Vector2(2360, 525), Vector2(150, 18), Color(0.48, 0.37, 0.31))
+        _platform(Vector2(2480, 585), Vector2(150, 18), Color(0.48, 0.37, 0.31))
         # The Cinder Squeeze is a second low-roof tap-jump tunnel.
         _platform(Vector2(3750, 357), Vector2(400, 16), Color(0.33, 0.27, 0.25))
         _platform(Vector2(3760, 428), Vector2(34, 18), Color(0.53, 0.37, 0.30))
@@ -159,6 +187,8 @@ func _build_level(level_id: int) -> void:
         _platform(Vector2(4000, 300), Vector2(170, 24), Color(0.38, 0.30, 0.27))
         _make_checkpoint(Vector2(1850, 418))
         _make_collectible(Vector2(2960, 176))
+        _make_bow_pickup(Vector2(3120, 145), "rapid")
+        _make_bow_pickup(Vector2(2910, 235), "spread")
         _make_exit(Vector2(4160, 420))
         _make_enemy(Vector2(1050, 417))
         _make_enemy(Vector2(2220, 417))
@@ -166,7 +196,7 @@ func _build_level(level_id: int) -> void:
         _make_enemy(Vector2(3930, 417))
         _make_hazard(Vector2(625, 635), Vector2(250, 70))
         _make_hazard(Vector2(1625, 635), Vector2(250, 70))
-        _make_hazard(Vector2(2425, 635), Vector2(250, 70))
+        _make_hazard(Vector2(2425, 730), Vector2(250, 70))
         _make_hazard(Vector2(3425, 635), Vector2(250, 70))
         _make_vent(Vector2(625, 520))
         _make_vent(Vector2(1625, 520))
@@ -191,11 +221,24 @@ func _build_region_three() -> void:
     _platform(Vector2(720, 357), Vector2(160, 16), ledge)
     _platform(Vector2(695, 428), Vector2(34, 18), Color(0.55, 0.39, 0.30))
     _platform(Vector2(835, 462), Vector2(220, 50), stone)
+    # Hushvault Bell Stair: gain height, double back left, then drop onto the vent shelf.
+    _platform(Vector2(1430, 270), Vector2(145, 22), ledge)
+    _platform(Vector2(1600, 190), Vector2(145, 22), ledge)
+    _platform(Vector2(1430, 150), Vector2(145, 22), ledge)
+    _platform(Vector2(1240, 220), Vector2(145, 22), ledge)
 
     # The arena is about 1,420 units wide, with two vented gaps and raised escape ledges.
     _platform(Vector2(1110, 462), Vector2(340, 50), stone)
     _platform(Vector2(1650, 462), Vector2(500, 50), stone)
     _platform(Vector2(2190, 462), Vector2(340, 50), stone)
+    # Breathglass catch ledges below the arena gaps make controlled drops recoverable.
+    _platform(Vector2(1340, 565), Vector2(128, 18), Color(0.29, 0.52, 0.48))
+    _platform(Vector2(1960, 565), Vector2(128, 18), Color(0.29, 0.52, 0.48))
+    _platform(Vector2(1310, 300), Vector2(140, 22), ledge)
+    _platform(Vector2(1840, 275), Vector2(145, 22), ledge)
+    _platform(Vector2(1880, 300), Vector2(145, 22), ledge)
+    _platform(Vector2(2020, 205), Vector2(145, 22), ledge)
+    _platform(Vector2(2200, 270), Vector2(145, 22), ledge)
     _platform(Vector2(1210, 340), Vector2(170, 24), ledge)
     _platform(Vector2(2090, 340), Vector2(170, 24), ledge)
     _platform(Vector2(1650, 357), Vector2(340, 16), Color(0.34, 0.27, 0.25))
@@ -203,6 +246,8 @@ func _build_region_three() -> void:
 
     _make_checkpoint(Vector2(850, 418))
     _make_collectible(Vector2(620, 300))
+    _make_bow_pickup(Vector2(1430, 125), "spread")
+    _make_bow_pickup(Vector2(2020, 165), "rapid")
     _make_vent(Vector2(1340, 520))
     _make_vent(Vector2(1960, 520))
     _make_exit(Vector2(2470, 420))
@@ -232,13 +277,14 @@ func _update_camera_limits() -> void:
         camera.limit_left = 0
         camera.limit_right = int(level_world_width)
         camera.limit_top = 0
-        camera.limit_bottom = 540
+        camera.limit_bottom = 800
 
 func _platform(center: Vector2, size: Vector2, tint: Color) -> void:
     var body := StaticBody2D.new()
     body.position = center
     body.collision_layer = 1
     body.collision_mask = 1
+    body.add_to_group("platforms")
     var shape := RectangleShape2D.new()
     shape.size = size
     var collider := CollisionShape2D.new()
@@ -303,6 +349,22 @@ func _make_collectible(at: Vector2) -> void:
     level_root.add_child(glow)
     var area := _new_trigger("Collectible", at, Vector2(42, 50))
     area.body_entered.connect(_on_collectible_entered.bind(area, glow))
+
+func _make_bow_pickup(at: Vector2, effect: String) -> void:
+    var visual := Node2D.new()
+    visual.name = "RapidStringPickup" if effect == "rapid" else "FanstringPickup"
+    visual.position = at
+    var halo := Polygon2D.new()
+    halo.polygon = PackedVector2Array([Vector2(0, -18), Vector2(13, 0), Vector2(0, 18), Vector2(-13, 0)])
+    halo.color = Color(0.95, 0.64, 0.28, 0.36) if effect == "rapid" else Color(0.50, 0.74, 1.0, 0.38)
+    visual.add_child(halo)
+    var core := Polygon2D.new()
+    core.polygon = PackedVector2Array([Vector2(0, -11), Vector2(8, 0), Vector2(0, 11), Vector2(-8, 0)])
+    core.color = Color(1.0, 0.83, 0.42) if effect == "rapid" else Color(0.76, 0.88, 1.0)
+    visual.add_child(core)
+    level_root.add_child(visual)
+    var area := _new_trigger("BowPickup", at, Vector2(48, 52))
+    area.body_entered.connect(_on_bow_pickup_entered.bind(effect, area, visual))
 
 func _make_stillheart(at: Vector2) -> void:
     stillheart_visual = Node2D.new()
@@ -395,6 +457,12 @@ func _build_hud() -> void:
     shard_label.add_theme_font_size_override("font_size", 18)
     shard_label.add_theme_color_override("font_color", Color(0.49, 0.91, 0.79))
     layer.add_child(shard_label)
+    combat_label = Label.new()
+    combat_label.position = Vector2(22, 78)
+    combat_label.add_theme_font_size_override("font_size", 16)
+    combat_label.add_theme_color_override("font_color", Color(0.80, 0.90, 0.84))
+    combat_label.visible = false
+    layer.add_child(combat_label)
     boss_label = Label.new()
     boss_label.text = "THE BELLOWS SAINT"
     boss_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -484,7 +552,7 @@ func _build_hud() -> void:
     menu_stack.add_child(cheat_heading)
     menu_stack.add_child(_make_cheat_toggles())
     menu_stack.add_child(_make_music_toggle())
-    var hint := _make_heading("A/D or stick · Jump · Attack · P to pause", 13)
+    var hint := _make_heading("Stick · JUMP · ATTACK · BOW · SHIELD", 13)
     hint.add_theme_color_override("font_color", Color(0.69, 0.73, 0.72))
     menu_stack.add_child(hint)
 
@@ -575,6 +643,7 @@ func _show_main_menu() -> void:
     player.set_physics_process(false)
     health_label.visible = false
     shard_label.visible = false
+    combat_label.visible = false
     controls.visible = false
     controls.set_process_input(false)
     pause_panel.visible = false
@@ -593,6 +662,7 @@ func _start_game() -> void:
     player.set_physics_process(true)
     health_label.visible = true
     shard_label.visible = true
+    combat_label.visible = true
     controls.visible = true
     controls.set_process_input(true)
     resume_button.visible = true
@@ -658,6 +728,7 @@ func _update_music_playback() -> void:
             music_player.stop()
 
 func _process(_delta: float) -> void:
+    _refresh_combat_hud()
     if Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("touch_pause"):
         _toggle_pause()
     if Input.is_action_just_pressed("restart"):
@@ -683,6 +754,22 @@ func _restart_level() -> void:
 func _on_health_changed(current: int, maximum: int) -> void:
     health_label.text = "HEALTH  " + "◆".repeat(current) + "◇".repeat(maximum - current)
 
+func _on_arrow_shot_requested(origin: Vector2, direction: int, spread_angle: float, shooter_rid: RID) -> void:
+    if not is_instance_valid(level_root):
+        return
+    var arrow := PLAYER_ARROW_SCENE.instantiate() as Node2D
+    level_root.add_child(arrow)
+    arrow.call("configure", origin, direction, spread_angle, shooter_rid)
+
+func _on_shield_state_changed(_durability: int, _maximum: int) -> void:
+    _refresh_combat_hud()
+    if _durability == 0 and game_started:
+        _show_message("GUARD BROKEN — RESTORE AT A CHECKPOINT", 2.0)
+
+func _refresh_combat_hud() -> void:
+    if is_instance_valid(combat_label) and is_instance_valid(player):
+        combat_label.text = player.get_combat_status_text()
+
 func _refresh_hud() -> void:
     if is_instance_valid(shard_label):
         var level_name := "FORGOTTEN HOLLOW"
@@ -706,6 +793,7 @@ func _on_checkpoint_entered(body: Node2D, at: Vector2) -> void:
         return
     checkpoint_position = at
     player.respawn_position = checkpoint_position
+    player.restore_shield()
     _show_message("CHECKPOINT KINDLED", 2.0)
 
 func _on_collectible_entered(body: Node2D, area: Area2D, visual: Node2D) -> void:
@@ -716,6 +804,16 @@ func _on_collectible_entered(body: Node2D, area: Area2D, visual: Node2D) -> void
     visual.queue_free()
     _refresh_hud()
     _show_message("SHARD FOUND", 2.0)
+
+func _on_bow_pickup_entered(body: Node2D, effect: String, area: Area2D, visual: Node2D) -> void:
+    if body != player or not is_instance_valid(area):
+        return
+    player.activate_bow_pickup(effect)
+    area.queue_free()
+    if is_instance_valid(visual):
+        visual.queue_free()
+    var label := "QUICKSTRING — FASTER ARROWS FOR 12 SECONDS" if effect == "rapid" else "FANSTRING — THREE-WAY VOLLEY FOR 12 SECONDS"
+    _show_message(label, 2.4)
 
 func _on_stillheart_entered(body: Node2D, area: Area2D, visual: Node2D) -> void:
     if body != player or not is_instance_valid(area):
