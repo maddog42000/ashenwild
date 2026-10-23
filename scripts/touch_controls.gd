@@ -7,7 +7,7 @@ const STICK_DEAD_ZONE := 18.0
 
 var fingers: Dictionary = {}
 var active_sticks: Dictionary = {}
-var counts := {"move_left": 0, "move_right": 0, "jump": 0, "attack": 0, "touch_pause": 0, "restart": 0}
+var counts := {"move_left": 0, "move_right": 0, "jump": 0, "attack": 0, "bow_fire": 0, "shield": 0, "touch_pause": 0, "restart": 0}
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -128,6 +128,8 @@ func _positions(size: Vector2) -> Dictionary:
         "stick": Vector2(145.0 * scale, lower_y),
         "jump": Vector2(size.x - 285.0 * scale, lower_y),
         "attack": Vector2(size.x - 88.0 * scale, lower_y),
+        "bow_fire": Vector2(size.x - 175.0 * scale, lower_y - 132.0 * scale),
+        "shield": Vector2(size.x - 76.0 * scale, lower_y - 226.0 * scale),
         "touch_pause": Vector2(size.x - 62.0 * scale, 52.0 * scale),
         "restart": Vector2(size.x - 148.0 * scale, 52.0 * scale)
     }
@@ -136,7 +138,7 @@ func _action_at(point: Vector2) -> String:
     var size := get_viewport_rect().size
     var scale := _ui_scale(size)
     var buttons := _positions(size)
-    for action in ["jump", "attack", "restart", "touch_pause"]:
+    for action in ["jump", "attack", "bow_fire", "shield", "restart", "touch_pause"]:
         var radius := _hit_radius(action) * scale
         if point.distance_to(buttons[action]) <= radius:
             return action
@@ -146,6 +148,8 @@ func _hit_radius(action: String) -> float:
     match action:
         "jump": return 88.0
         "attack": return 76.0
+        "bow_fire": return 54.0
+        "shield": return 64.0
         "touch_pause", "restart": return 36.0
     return 0.0
 
@@ -173,6 +177,8 @@ func _draw() -> void:
 
     _draw_button(positions["jump"], "JUMP", counts["jump"] > 0, 80.0 * scale)
     _draw_button(positions["attack"], "ATTACK", counts["attack"] > 0, 70.0 * scale)
+    _draw_button(positions["bow_fire"], "BOW", counts["bow_fire"] > 0, 51.0 * scale)
+    _draw_button(positions["shield"], "SHIELD", counts["shield"] > 0, 61.0 * scale)
     _draw_button(positions["restart"], "↻", counts["restart"] > 0, 34.0 * scale)
     _draw_button(positions["touch_pause"], "Ⅱ", counts["touch_pause"] > 0, 34.0 * scale)
 
