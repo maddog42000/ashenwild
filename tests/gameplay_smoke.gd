@@ -161,6 +161,10 @@ func _run() -> void:
     if not _has_platform_at(main, Vector2(2010, 280)) or not _has_platform_at(main, Vector2(2330, 615)):
         _fail("Level 1 is missing its upward-left ridge or safe lower tunnel shelf")
         return
+    for route_center in [Vector2(2880, 200), Vector2(2750, 125), Vector2(2620, 200)]:
+        if not _has_platform_at(main, route_center):
+            _fail("Region 1 Ashglass Switchback is missing platform %s" % route_center)
+            return
     if player.get_current_speed() != 260.0 or player.get_current_gravity() != 950.0:
         _fail("Full-health movement profile is incorrect")
         return
@@ -367,6 +371,10 @@ func _run() -> void:
     if not _has_platform_at(main, Vector2(3360, 355)) or not _has_platform_at(main, Vector2(3510, 195)) or not _has_platform_at(main, Vector2(3445, 560)) or not _has_platform_at(main, Vector2(3490, 490)):
         _fail("Resonance Gallery is missing its upper climb or staged lower drop-and-return route")
         return
+    for route_center in [Vector2(4120, 225), Vector2(3990, 150), Vector2(3860, 225)]:
+        if not _has_platform_at(main, route_center):
+            _fail("Region 2 Pale Spine Switchback is missing platform %s" % route_center)
+            return
     if player.health != 3:
         _fail("Level transition should restore all health")
         return
@@ -397,8 +405,8 @@ func _run() -> void:
     player._update_health_scale()
     player.restore_shield()
     # Move the frozen test fixture beyond the Gallery platforms so its chime has an unobstructed attack lane.
-    cantor.global_position = Vector2(4100, 150)
-    player.global_position = Vector2(4170, 418)
+    cantor.global_position = Vector2(4200, 150)
+    player.global_position = Vector2(4270, 418)
     player.facing = -1 # The Cantor is to the left; its falling bolt approaches from that side.
     Input.action_press("shield")
     cantor.call("_begin_telegraph", player)
@@ -474,6 +482,10 @@ func _run() -> void:
     if not _has_platform_at(main, Vector2(1430, 150)) or not _has_platform_at(main, Vector2(1340, 565)):
         _fail("The Hushvault is missing its high return path or Breathglass catch ledge")
         return
+    for route_center in [Vector2(520, 270), Vector2(660, 205), Vector2(790, 260), Vector2(710, 320)]:
+        if not _has_platform_at(main, route_center):
+            _fail("Region 3 Bell-Throat Steps are missing platform %s" % route_center)
+            return
 
     var boss: Node = main.boss
     if int(boss.get("health")) != 8 or bool(boss.get("active")):

@@ -132,6 +132,10 @@ func _build_level(level_id: int) -> void:
         _platform(Vector2(2130, 190), Vector2(150, 22), Color(0.33, 0.46, 0.39))
         _platform(Vector2(1940, 210), Vector2(150, 22), Color(0.33, 0.46, 0.39))
         _platform(Vector2(1580, 355), Vector2(150, 22), Color(0.33, 0.46, 0.39))
+        # Ashglass Switchback: climb right, reverse left over the crest, then drop back to the ridge.
+        _platform(Vector2(2880, 200), Vector2(120, 20), Color(0.43, 0.51, 0.43))
+        _platform(Vector2(2750, 125), Vector2(120, 20), Color(0.43, 0.51, 0.43))
+        _platform(Vector2(2620, 200), Vector2(120, 20), Color(0.43, 0.51, 0.43))
         # The Echo Crawl drops into a short catch-shelf tunnel and climbs back out.
         _platform(Vector2(2160, 540), Vector2(156, 18), Color(0.39, 0.47, 0.41))
         _platform(Vector2(2330, 615), Vector2(156, 18), Color(0.39, 0.47, 0.41))
@@ -197,6 +201,10 @@ func _build_level(level_id: int) -> void:
         _platform(Vector2(3760, 428), Vector2(34, 18), Color(0.53, 0.37, 0.30))
         _platform(Vector2(3650, 337), Vector2(150, 24), Color(0.38, 0.30, 0.27))
         _platform(Vector2(4000, 300), Vector2(170, 24), Color(0.38, 0.30, 0.27))
+        # Pale Spine switchback: rise toward the exit, turn left across the crown, and return to the shelf.
+        _platform(Vector2(4120, 225), Vector2(120, 20), Color(0.53, 0.43, 0.36))
+        _platform(Vector2(3990, 150), Vector2(120, 20), Color(0.53, 0.43, 0.36))
+        _platform(Vector2(3860, 225), Vector2(120, 20), Color(0.53, 0.43, 0.36))
         _make_checkpoint(Vector2(1850, 418))
         _make_collectible(Vector2(2960, 176))
         _make_bow_pickup(Vector2(3120, 145), "rapid")
@@ -234,6 +242,11 @@ func _build_region_three() -> void:
     _platform(Vector2(720, 357), Vector2(160, 16), ledge)
     _platform(Vector2(695, 428), Vector2(34, 18), Color(0.55, 0.39, 0.30))
     _platform(Vector2(835, 462), Vector2(220, 50), stone)
+    # Bell-Throat Steps: climb up and right, cut back left, then drop onto the approach ledge.
+    _platform(Vector2(520, 270), Vector2(120, 20), ledge)
+    _platform(Vector2(660, 205), Vector2(120, 20), ledge)
+    _platform(Vector2(790, 260), Vector2(120, 20), ledge)
+    _platform(Vector2(710, 320), Vector2(120, 20), ledge)
     # Hushvault Bell Stair: gain height, double back left, then drop onto the vent shelf.
     _platform(Vector2(1430, 270), Vector2(145, 22), ledge)
     _platform(Vector2(1600, 190), Vector2(145, 22), ledge)
