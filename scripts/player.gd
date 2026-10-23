@@ -31,6 +31,9 @@ var facing := 1
 var invulnerable := false
 var attacking := false
 var dead := false
+var cheat_invulnerable := false
+var cheat_infinite_jumps := false
+var cheat_speed_boost := false
 var attack_ready_at := 0
 var vent_ready_at := 0
 var respawn_position := Vector2(120, 418)
@@ -110,7 +113,11 @@ func _update_health_scale() -> void:
         body_shape.height = BASE_COLLIDER_HEIGHT * size_factor
 
 func get_current_speed() -> float:
-    return BASE_SPEED + SPEED_PER_MISSING_HEART * _missing_hearts()
+    var speed := BASE_SPEED + SPEED_PER_MISSING_HEART * _missing_hearts()
+    return speed * (1.55 if cheat_speed_boost else 1.0)
+
+func get_current_jump_limit() -> int:
+    return 99 if cheat_infinite_jumps else 2
 
 func get_current_gravity() -> float:
     return BASE_GRAVITY + GRAVITY_PER_MISSING_HEART * _missing_hearts()
@@ -142,7 +149,8 @@ func _physics_process(delta: float) -> void:
 
     if was_on_floor:
         jumps_used = 0
-    if Input.is_action_just_pressed("jump") and jumps_used < 2:
+    var jump_limit := get_current_jump_limit()
+    if Input.is_action_just_pressed("jump") and jumps_used < jump_limit:
         velocity.y = BASE_JUMP_VELOCITY + JUMP_BOOST_PER_MISSING_HEART * missing_hearts if jumps_used == 0 else BASE_DOUBLE_JUMP_VELOCITY + DOUBLE_JUMP_BOOST_PER_MISSING_HEART * missing_hearts
         jumps_used += 1
     if not was_on_floor:
@@ -206,6 +214,10 @@ func _attack() -> void:
         player_sprite.flip_h = facing < 0
         player_sprite.play("attack")
     for enemy in get_tree().get_nodes_in_group("enemies"):
+        if enemy.has_method("is_player_in_attack_range"):
+            if enemy.is_player_in_attack_range(self):
+                enemy.take_damage(1, facing)
+            continue
         var offset: Vector2 = enemy.global_position - global_position
         if absf(offset.y) <= 58.0 and absf(offset.x) <= 82.0 and offset.x * facing >= -8.0:
             if enemy.has_method("take_damage"):
@@ -216,7 +228,7 @@ func _attack() -> void:
         player_sprite.play("idle")
 
 func take_damage(amount: int, source_x: float, apply_knockback: bool = true) -> void:
-    if invulnerable or dead:
+    if cheat_invulnerable or invulnerable or dead:
         return
     health = maxi(0, health - amount)
     _update_health_scale()
@@ -234,7 +246,7 @@ func take_damage(amount: int, source_x: float, apply_knockback: bool = true) -> 
         modulate = Color.WHITE
 
 func _die() -> void:
-    if dead:
+    if dead or cheat_invulnerable:
         return
     dead = true
     velocity = Vector2.ZERO
