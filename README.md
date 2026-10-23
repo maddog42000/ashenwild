@@ -1,22 +1,30 @@
-# ASHENWILD — Phase 7: Bow, Guard, and Vertical Routes
+# ASHENWILD — Phase 8: Elite Guard Trials
 
-A Godot 4 Android action-platformer prototype. This iteration builds on the three-region Bellows Saint campaign, title menu, cheats, landscape rotation, and looping soundtracks with a bow, timed shot modifiers, a limited projectile guard, and new upward-left and controlled-drop routes.
+A Godot 4 Android action-platformer prototype. This iteration adds two original elite encounters to the bow-and-shield build: the Kettleback Bulwark and Gloam Cantor. Their signature projectiles must be guarded from the correct side to open bow-only weakpoints. The maps also gain a high climb-and-return route and a staged drop shaft around the Cantor.
 
 ## Play flow and controls
 
-Level 1, **The Forgotten Hollow**, crosses several screens of tiered platforms, dangerous gaps, and the low-roof Echo Crawl. The new **Wisp Ladder** climbs to a high shelf, turns back left, and drops to a landing shelf. The Echo Crawl now includes a lower passage with staged catch ledges and a jump-out route. Collect its teal shard and reach the gate to enter Level 2, **The Pale Spine**.
+Level 1, **The Forgotten Hollow**, crosses several screens of tiered platforms, dangerous gaps, the low-roof Echo Crawl, and the **Wisp Ladder**. The Kettleback Bulwark guards the ladder approach: evade or block its slow rivet, then shoot its exposed jaw core. The Echo Crawl includes a lower passage with staged catch ledges. Collect the teal shard and reach the gate to enter Level 2, **The Pale Spine**.
 
-Level 2 adds a longer route with chained ascent/descent platforms, the **Pale Spine return ridge**, a recoverable drop passage, wider gaps, the Cinder Squeeze tunnel, Ash Mites, checkpoints, an amber shard, and the next gate. Level 2 leads to Region 3, **The Hushvault**, whose **Bell Stair** climbs up and back left before the arena. Breathglass catch ledges sit below the arena gaps; the vents can kick the player upward. Defeat the Bellows Saint, claim the dropped **Stillheart**, then reach the far exit.
+Level 2 has the **Resonance Gallery**, a multi-route gap crossing: climb up and back left, descend onto a safe mid-shelf, or take the lower catch-ledge path and jump back to the far-side floor. The Gloam Cantor telegraphs a falling chime bolt into the route. Correctly guard it to bring the Cantor down into arrow range; otherwise, dodge the marked lane. The level also retains its return ridge, Cinder Squeeze tunnel, Ash Mites, checkpoints, amber shard, and exit to Region 3, **The Hushvault**. Hushvault's Bell Stair and Breathglass catch ledges lead to the Bellows Saint. Defeat it, claim the Stillheart, and reach the far exit.
 
 On mobile, use the large lower-left drag joystick. Independent fingers can steer, jump, melee, fire the bow, and hold the shield at the same time, including in the air. **JUMP** and **ATTACK** are along the lower-right edge; **BOW** and **SHIELD** are staggered above them. Pause and restart remain at the top right. Keyboard fallback: A/D or arrows to move, Space/W/Up to jump, J/X for melee, hold K/C to fire arrows, hold L/V to guard, P/Escape to pause, and R to restart.
 
-The bow can hit Ash Mites and the Bellows Saint's **exposed core**; arrows do not damage the covered core and are stopped by solid terrain. Holding the fire input repeats shots at the current cooldown. **Quickstring** pickups shorten that cooldown for 12 seconds. **Fanstring** pickups fire a three-arrow spread for 12 seconds. Each buff refreshes its own timer when collected again.
+The bow can hit Ash Mites, elite weakpoints, and the Bellows Saint's **exposed core**; arrows do not damage closed elite armor or the covered boss core and are stopped by solid terrain. Holding the fire input repeats shots at the current cooldown. **Quickstring** pickups shorten that cooldown for 12 seconds. **Fanstring** pickups fire a three-arrow spread for 12 seconds. Each buff refreshes its own timer when collected again.
 
-The hold-to-guard shield blocks **frontal boss projectiles** only while held. It absorbs three hits, then breaks until a checkpoint or respawn restores it. It does not block melee contact or replace moving out of an attack lane.
+The hold-to-guard shield blocks **frontal enemy projectiles** only while held and while facing the projectile source. It absorbs three hits, then breaks until a checkpoint or respawn restores it. Guarding one of the new elites' signature shots consumes one charge and opens that elite's weakpoint briefly. Dodging avoids the shot but does not create the opening. The shield does not block melee contact or replace moving out of an attack lane.
 
 The game opens at a title screen. **BEGIN JOURNEY** starts the run; the pause menu offers Resume and Return to Title. Optional, off-by-default cheats are **Invulnerable**, **Unlimited air jumps**, and **High-speed mode**. The Background music toggle controls both the menu theme and gameplay track. The menu theme plays only on the title screen; the supplied `assets/audio/ashenwild_gameplay_theme.mp3` loops during gameplay and pauses with the game. Replace that file with another MP3 at the same path to change the gameplay music.
 
 Android orientation is set to **sensor landscape**, allowing either left- or right-landscape rotation while preventing portrait play.
+
+## Elite enemies
+
+**Kettleback Bulwark:** a ground sentinel with three health pips. It winds up for 0.9 seconds and fires a slow, straight rivet. A frontal shield block opens its jaw core for 2.35 seconds; a bow arrow must strike the core. Its shell cannot be damaged by melee or stomping.
+
+**Gloam Cantor:** a hovering ranged elite with four health pips. It marks the player's lane for one second, then fires a falling chime bolt. A correctly faced shield guard suspends it low and exposes its hanging chime for 2.6 seconds. The marked lane can also be dodged; its weakpoint still requires the bow.
+
+Both attacks are collision-tested, use an explicit projectile source for guard feedback, and clear pending shots/tells when the player dies. A successful block is the only action that opens their arrow weakpoints. The rest of the original [elite design set is documented in PR #5](https://github.com/maddog42000/ashenwild/pull/5); the remaining Glasswing Reaver is not implemented in this build.
 
 ## Bellows Saint encounter
 
@@ -34,11 +42,11 @@ Each missing heart makes a distinctly smaller character and faster movement prof
 | 2 hearts | 350 px/s | 1,300 px/s² | 860 px/s | −570 px/s | 78% |
 | 1 heart | 440 px/s | 1,650 px/s² | 1,020 px/s | −615 px/s | 56% |
 
-Ash Mites and the Bellows Saint hurt the player only on actual body collision. Merely being nearby or jumping over an enemy is not enough. Landing on an Ash Mite is a safe stomp. Boss pulses and embers also require actual hitbox overlap. Hard landings at 650–829 px/s cost one heart; impacts at 830 px/s or higher cost two. The new staged drops are designed to stay below the fall-damage threshold at one heart when landed on as intended. Checkpoints restore full health and shield durability.
+Ash Mites, elites, and the Bellows Saint hurt the player only on actual body collision. Merely being nearby or jumping over an enemy is not enough. Landing on an Ash Mite is a safe stomp; elites cannot be stomped through their armor. Boss and elite projectiles must overlap the player, and only a held, correctly oriented shield blocks them. Hard landings at 650–829 px/s cost one heart; impacts at 830 px/s or higher cost two. Staged drops are designed to stay below the fall-damage threshold at one heart when landed on as intended. Checkpoints restore full health and shield durability.
 
 ## Testing
 
-Tested with Godot **4.7.2 stable**. The checked-in headless regression covers title-menu startup, both looping audio streams, cheat toggles, sensor-landscape configuration, pause/resume and return-to-title, simultaneous joystick/jump/melee/bow/shield multitouch, movement health tiers, collision-only enemy damage, stomps, Breathglass, fall damage, a physics-driven one-heart catch-shelf descent, climb/drop platform presence in all regions, rapid-fire expiry, three-arrow spread volleys, real Ash Mite and exposed-core arrow hits, covered-core immunity, three shield blocks followed by an unblocked hit, Bellows Saint attack patterns and phases, projectile near-misses/direct hits, Stillheart pickup, and final completion.
+Tested with Godot **4.7.2 stable**. The checked-in headless regression covers title-menu startup, both looping audio streams, cheat toggles, sensor-landscape configuration, pause/resume and return-to-title, simultaneous joystick/jump/melee/bow/shield multitouch, movement health tiers, collision-only enemy damage, Ash Mite stomps, Breathglass, fall damage, one-heart catch-shelf descents, platform presence in all regions and the Resonance Gallery, timed bow buffs, real swept arrows, elite closed-weakpoint immunity, frontal versus rear guard behavior, successful Kettleback and Cantor counter windows, elite defeat, three-charge boss shielding, Bellows Saint attack patterns/phases, Stillheart pickup, and final completion.
 
 Run it from the project directory with:
 
@@ -46,7 +54,7 @@ Run it from the project directory with:
 godot --headless --path . --script res://tests/gameplay_smoke.gd
 ```
 
-The automated checks are not a substitute for a real phone playtest. Touch sizing, route readability, boss-shield timing, and jump timing still need confirmation on your device.
+The automated checks are not a substitute for a real phone playtest. Touch sizing, route readability, elite tells/guard timing, and jump timing still need confirmation on your device.
 
 ## Android test build
 
@@ -56,4 +64,4 @@ The project includes an `Android Debug (ARM64)` export preset. Open the folder c
 
 ## Repository and project contents
 
-The original Region 3 encounter design and implementation are already on public `main`. This Phase 7 iteration is developed on `bow-shield-vertical-routes` for review. `scenes/` contains the main, player, enemy, Bellows Saint, boss projectile, and bow-arrow scenes. `scripts/main.gd` builds the routes, menus, music playback, pickups, and progression. `scripts/player.gd` owns movement, health, cheats, fall damage, bow, shield, vents, and melee; `scripts/player_arrow.gd` implements swept collision-tested arrows; `scripts/touch_controls.gd` implements the drag joystick and concurrent touch buttons. `scripts/bellows_saint.gd` owns the three-phase encounter, and `scripts/boss_projectile.gd` implements the collision-tested attacks. `assets/audio/ashenwild_menu_theme.ogg` is the original generated title-screen loop; `assets/audio/ashenwild_gameplay_theme.mp3` is the user-provided in-game loop. `tests/gameplay_smoke.gd` checks gameplay regressions. `assets/sprites/` contains the original wanderer, Ash Mite, Bellows Saint, and boss-effect art; `scripts/scenery.gd` fits the cavern backdrop to each route.
+The original Region 3 encounter design and implementation are on public `main`. Phase 8 is developed on `bow-shield-vertical-routes` and added to the open Phase 7 review PR #4. `scenes/` contains the main, player, Ash Mite, Bellows Saint, elite, boss-projectile, elite-projectile, and bow-arrow scenes. `scripts/main.gd` builds the routes, encounters, menus, music, pickups, and progression. `scripts/player.gd` owns movement, health, cheats, fall damage, bow, shield, vents, and melee; `scripts/player_arrow.gd` implements swept arrows. `scripts/kettleback_bulwark.gd` and `scripts/gloam_cantor.gd` implement the two elites and their exposed-arrow checks. `scripts/elite_projectile.gd` uses hitbox collision and source-aware guard callbacks. `scripts/touch_controls.gd` implements the drag joystick and concurrent touch buttons. `scripts/bellows_saint.gd` owns the three-phase boss encounter. `assets/audio/ashenwild_menu_theme.ogg` is the original generated title-screen loop; `assets/audio/ashenwild_gameplay_theme.mp3` is the user-provided in-game loop. `tests/gameplay_smoke.gd` checks gameplay regressions. `assets/sprites/` contains the original wanderer, Ash Mite, Bellows Saint, and boss-effect art; the new elites have original procedural polygon visuals in Godot. `scripts/scenery.gd` fits the cavern backdrop to each route.

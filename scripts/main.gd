@@ -4,6 +4,8 @@ const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const ENEMY_SCENE := preload("res://scenes/enemy.tscn")
 const BOSS_SCENE := preload("res://scenes/bellows_saint.tscn")
 const PLAYER_ARROW_SCENE := preload("res://scenes/player_arrow.tscn")
+const KETTLEBACK_SCENE := preload("res://scenes/kettleback_bulwark.tscn")
+const GLOAM_CANTOR_SCENE := preload("res://scenes/gloam_cantor.tscn")
 const MENU_MUSIC_PATH := "res://assets/audio/ashenwild_menu_theme.ogg"
 const GAME_MUSIC_PATH := "res://assets/audio/ashenwild_gameplay_theme.mp3"
 
@@ -147,6 +149,7 @@ func _build_level(level_id: int) -> void:
         _make_exit(Vector2(3180, 420))
         _make_enemy(Vector2(1050, 417))
         _make_enemy(Vector2(1970, 417))
+        _make_elite(KETTLEBACK_SCENE, Vector2(1700, 418))
         _make_hazard(Vector2(595, 635), Vector2(220, 70))
         _make_hazard(Vector2(1280, 635), Vector2(220, 70))
         _make_hazard(Vector2(2340, 730), Vector2(480, 70))
@@ -180,6 +183,15 @@ func _build_level(level_id: int) -> void:
         # Drop passage in the central gap: every fall is caught before the hazard shelf.
         _platform(Vector2(2360, 525), Vector2(150, 18), Color(0.48, 0.37, 0.31))
         _platform(Vector2(2480, 585), Vector2(150, 18), Color(0.48, 0.37, 0.31))
+        # Resonance Gallery: climb high, double back, then descend shelf-by-shelf
+        # through the 3300–3550 pit and jump back to the far-side floor.
+        _platform(Vector2(3360, 355), Vector2(120, 20), Color(0.46, 0.62, 0.57))
+        _platform(Vector2(3510, 195), Vector2(120, 20), Color(0.46, 0.62, 0.57))
+        _platform(Vector2(3350, 305), Vector2(120, 20), Color(0.46, 0.62, 0.57))
+        _platform(Vector2(3320, 390), Vector2(110, 18), Color(0.35, 0.59, 0.53))
+        _platform(Vector2(3350, 490), Vector2(120, 18), Color(0.35, 0.59, 0.53))
+        _platform(Vector2(3445, 560), Vector2(120, 18), Color(0.35, 0.59, 0.53))
+        _platform(Vector2(3490, 490), Vector2(100, 18), Color(0.35, 0.59, 0.53))
         # The Cinder Squeeze is a second low-roof tap-jump tunnel.
         _platform(Vector2(3750, 357), Vector2(400, 16), Color(0.33, 0.27, 0.25))
         _platform(Vector2(3760, 428), Vector2(34, 18), Color(0.53, 0.37, 0.30))
@@ -194,6 +206,7 @@ func _build_level(level_id: int) -> void:
         _make_enemy(Vector2(2220, 417))
         _make_enemy(Vector2(3000, 417))
         _make_enemy(Vector2(3930, 417))
+        _make_elite(GLOAM_CANTOR_SCENE, Vector2(3430, 150))
         _make_hazard(Vector2(625, 635), Vector2(250, 70))
         _make_hazard(Vector2(1625, 635), Vector2(250, 70))
         _make_hazard(Vector2(2425, 730), Vector2(250, 70))
@@ -400,6 +413,24 @@ func _make_enemy(at: Vector2) -> void:
     var enemy := ENEMY_SCENE.instantiate()
     enemy.position = at
     level_root.add_child(enemy)
+
+func _make_elite(scene: PackedScene, at: Vector2) -> void:
+    var elite := scene.instantiate() as Node2D
+    elite.position = at
+    elite.connect("status_changed", Callable(self, "_on_elite_status_changed"))
+    level_root.add_child(elite)
+
+func _on_elite_status_changed(enemy_name: String, state: String, _health: int, _maximum: int) -> void:
+    if not game_started:
+        return
+    if state == "windup":
+        _show_message("%s — BLOCK OR MOVE" % enemy_name, 1.25)
+    elif state == "telegraph":
+        _show_message("%s — MARKED DROP LANE" % enemy_name, 1.25)
+    elif state == "exposed":
+        _show_message("%s WEAKPOINT OPEN — BOW!" % enemy_name, 1.8)
+    elif state == "defeated":
+        _show_message("%s DEFEATED" % enemy_name, 2.0)
 
 func _make_boss_gate(gate_at: Vector2, threshold_at: Vector2) -> void:
     var gate := StaticBody2D.new()
@@ -938,6 +969,11 @@ func _on_boss_defeated() -> void:
     _show_message("THE HUSHVAULT'S BELL GOES QUIET — THE EXIT IS OPEN", 3.0)
 
 func _on_player_died() -> void:
+    for projectile in get_tree().get_nodes_in_group("elite_projectiles"):
+        projectile.queue_free()
+    for enemy in get_tree().get_nodes_in_group("enemies"):
+        if enemy.has_method("cancel_pending_attack"):
+            enemy.call("cancel_pending_attack")
     if is_instance_valid(boss) and not bool(boss.get("is_defeated")):
         boss.call("reset_encounter")
         boss_label.visible = false

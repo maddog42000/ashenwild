@@ -194,7 +194,7 @@ func restore_shield() -> void:
     shield_state_changed.emit(shield_durability, MAX_SHIELD_DURABILITY)
     queue_redraw()
 
-func try_block_projectile(source_x: float) -> bool:
+func try_block_projectile(source_x: float, source_enemy: Node2D = null) -> bool:
     if dead or shield_durability <= 0 or not Input.is_action_pressed("shield"):
         return false
     var incoming_side := 1 if source_x > global_position.x else -1
@@ -203,6 +203,8 @@ func try_block_projectile(source_x: float) -> bool:
     shield_durability -= 1
     shield_state_changed.emit(shield_durability, MAX_SHIELD_DURABILITY)
     queue_redraw()
+    if is_instance_valid(source_enemy) and source_enemy.has_method("on_projectile_guarded"):
+        source_enemy.call_deferred("on_projectile_guarded")
     return true
 
 func breathglass_burst() -> void:
@@ -260,6 +262,11 @@ func _check_enemy_contacts(fall_speed_before_landing: float) -> bool:
         var collider := collision.get_collider()
         if collider is Node and collider.is_in_group("enemies") and collider.has_method("apply_contact_damage"):
             if collision.get_normal().y < -0.65 and fall_speed_before_landing > 0.0:
+                if collider.has_method("can_be_stomped") and not bool(collider.call("can_be_stomped")):
+                    velocity.y = -260.0
+                    jumps_used = 0
+                    stomped_enemy = true
+                    continue
                 collider.take_damage(1, facing)
                 velocity.y = -320.0
                 jumps_used = 0

@@ -46,7 +46,10 @@ func _resolve_hit(hit: Dictionary) -> void:
         return
     if target.has_method("is_arrow_target_hit"):
         if bool(target.call("is_arrow_target_hit", hit.get("position"))):
-            target.call("take_damage", 1, facing)
+            if target.has_method("take_arrow_damage"):
+                target.call("take_arrow_damage", hit.get("position"), facing)
+            else:
+                target.call("take_damage", 1, facing)
         return
     if target.has_method("take_damage"):
         target.call("take_damage", 1, facing)

@@ -13,6 +13,20 @@ func _has_platform_at(main: Node, expected: Vector2) -> bool:
             return true
     return false
 
+func _enemy_named(expected_name: String) -> Node:
+    for enemy in get_nodes_in_group("enemies"):
+        if enemy.name == expected_name:
+            return enemy
+    return null
+
+func _spawn_elite_projectile(main: Node, source: Node2D, kind: String, at: Vector2) -> Area2D:
+    var shot := load("res://scenes/elite_projectile.tscn").instantiate() as Area2D
+    var velocity := Vector2(-700.0 if source.global_position.x > at.x else 700.0, 0.0)
+    var origin := at - velocity.normalized() * 60.0
+    shot.call("configure", kind, origin, velocity, source)
+    main.level_root.add_child(shot)
+    return shot
+
 func _run() -> void:
     var packed := load("res://scenes/main.tscn") as PackedScene
     var main := packed.instantiate()
@@ -151,6 +165,69 @@ func _run() -> void:
         _fail("Full-health movement profile is incorrect")
         return
 
+    var kettleback := _enemy_named("KettlebackBulwark")
+    if not is_instance_valid(kettleback):
+        _fail("Level 1 did not place the Kettleback Bulwark beside the Wisp Ladder")
+        return
+    player.set_physics_process(false)
+    kettleback.set_physics_process(false)
+    player.global_position = kettleback.global_position + Vector2(-170, 0)
+    player.facing = 1
+    player.health = 3
+    player.invulnerable = false
+    player._update_health_scale()
+    player.bow_ready_at = 0
+    player._shoot_bow()
+    await create_timer(0.22).timeout
+    if int(kettleback.get("health")) != 3:
+        _fail("Kettleback armor accepted a bow hit while its jaw core was closed")
+        return
+    player.global_position = kettleback.global_position + Vector2(-70, 0)
+    player._attack()
+    await create_timer(0.22).timeout
+    if int(kettleback.get("health")) != 3 or bool(kettleback.call("is_player_in_attack_range", player)):
+        _fail("Melee bypassed the Kettleback's bow-only weakpoint")
+        return
+
+    # A back-facing guard must not open the core or spend durability.
+    player.global_position = kettleback.global_position + Vector2(-170, 0)
+    player.facing = -1
+    player.restore_shield()
+    Input.action_press("shield")
+    _spawn_elite_projectile(main, kettleback, "kettle_rivet", player.global_position)
+    await create_timer(0.16).timeout
+    Input.action_release("shield")
+    if player.health != 2 or player.shield_durability != 3 or str(kettleback.get("state")) == "exposed":
+        _fail("A rear-facing shield incorrectly blocked the Kettleback rivet")
+        return
+
+    # Restore health, then guard from the Bulwark's actual side and shoot its opened jaw.
+    player.health = 3
+    player.invulnerable = false
+    player._update_health_scale()
+    player.facing = 1
+    kettleback.set("facing", -1)
+    kettleback.set("state", "recovery")
+    kettleback.set("signature_in_flight", true)
+    Input.action_press("shield")
+    _spawn_elite_projectile(main, kettleback, "kettle_rivet", player.global_position)
+    await create_timer(0.16).timeout
+    Input.action_release("shield")
+    if player.health != 3 or player.shield_durability != 2 or str(kettleback.get("state")) != "exposed":
+        _fail("Correctly facing a guarded Kettleback rivet did not open its jaw weakpoint")
+        return
+    for expected_health in [2, 1, 0]:
+        player.bow_ready_at = 0
+        player._shoot_bow()
+        await create_timer(0.22).timeout
+        if expected_health > 0 and int(kettleback.get("health")) != expected_health:
+            _fail("Bow arrows did not reduce the exposed Kettleback's health")
+            return
+    await physics_frame
+    if is_instance_valid(kettleback):
+        _fail("Three exposed-core arrows did not defeat the Kettleback Bulwark")
+        return
+
     var full_scale: float = player.get_node("Sprite").scale.x
     player.health = 2
     player._update_health_scale()
@@ -174,8 +251,9 @@ func _run() -> void:
     for enemy in enemies:
         enemy.set_physics_process(false)
     var stomp_target: CharacterBody2D = enemies[1]
+    stomp_target.global_position = Vector2(2900, 418)
     player.set_physics_process(false)
-    player.position = stomp_target.position + Vector2(0, -100)
+    player.global_position = stomp_target.global_position + Vector2(0, -100)
     for frame in range(12):
         await physics_frame
     if player.health != 3:
@@ -184,7 +262,7 @@ func _run() -> void:
 
     # Falling onto an Ash Mite should stomp it and bounce the player safely.
     var old_enemy_health: int = stomp_target.health
-    player.position = stomp_target.position + Vector2(0, -75)
+    player.global_position = stomp_target.global_position + Vector2(0, -75)
     player.velocity = Vector2(0, 520)
     player.set_physics_process(true)
     for frame in range(24):
@@ -280,15 +358,97 @@ func _run() -> void:
     main._on_exit_entered(player)
     await physics_frame
     await physics_frame
-    if main.current_level != 2 or main.level_world_width < 4200.0 or get_nodes_in_group("enemies").size() < 4:
+    if main.current_level != 2 or main.level_world_width < 4200.0 or get_nodes_in_group("enemies").size() < 5:
         _fail("Level 2 did not load with the longer route and enemy set")
         return
     if not _has_platform_at(main, Vector2(3290, 285)) or not _has_platform_at(main, Vector2(2480, 585)):
         _fail("Level 2 is missing its upward-left ridge or safe downward catch ledge")
         return
+    if not _has_platform_at(main, Vector2(3360, 355)) or not _has_platform_at(main, Vector2(3510, 195)) or not _has_platform_at(main, Vector2(3445, 560)) or not _has_platform_at(main, Vector2(3490, 490)):
+        _fail("Resonance Gallery is missing its upper climb or staged lower drop-and-return route")
+        return
     if player.health != 3:
         _fail("Level transition should restore all health")
         return
+
+    var cantor := _enemy_named("GloamCantor")
+    if not is_instance_valid(cantor):
+        _fail("Level 2 did not place the Gloam Cantor in the Resonance Gallery")
+        return
+    cantor.set_physics_process(false)
+    player.set_physics_process(false)
+    player.global_position = cantor.global_position + Vector2(-75, 0)
+    player.facing = 1
+    player.bow_ready_at = 0
+    player._shoot_bow()
+    await create_timer(0.22).timeout
+    if int(cantor.get("health")) != 4:
+        _fail("Gloam Cantor accepted a bow hit while its hanging chime was closed")
+        return
+    player._attack()
+    await create_timer(0.22).timeout
+    if int(cantor.get("health")) != 4 or bool(cantor.call("is_player_in_attack_range", player)):
+        _fail("Melee bypassed the Gloam Cantor's bow-only weakpoint")
+        return
+
+    player.velocity = Vector2.ZERO
+    player.health = 3
+    player.invulnerable = false
+    player._update_health_scale()
+    player.restore_shield()
+    # Move the frozen test fixture beyond the Gallery platforms so its chime has an unobstructed attack lane.
+    cantor.global_position = Vector2(4100, 150)
+    player.global_position = Vector2(4170, 418)
+    player.facing = -1 # The Cantor is to the left; its falling bolt approaches from that side.
+    Input.action_press("shield")
+    cantor.call("_begin_telegraph", player)
+    cantor.call("_launch_chime")
+    await create_timer(0.75).timeout
+    Input.action_release("shield")
+    if player.health != 3 or player.shield_durability != 2 or str(cantor.get("state")) != "exposed":
+        _fail("A correctly guarded Cantor chime did not consume one charge and expose its weakpoint")
+        return
+    for expected_health in [3, 2, 1, 0]:
+        player.bow_ready_at = 0
+        player._shoot_bow()
+        await create_timer(0.22).timeout
+        if expected_health > 0 and int(cantor.get("health")) != expected_health:
+            _fail("Bow arrows did not damage the Cantor's exposed hanging chime")
+            return
+    await physics_frame
+    if is_instance_valid(cantor):
+        _fail("Four exposed-chime arrows did not defeat the Gloam Cantor")
+        return
+
+    # The Resonance Gallery's lower route must catch the highest-gravity player twice.
+    player.health = 1
+    player._update_health_scale()
+    player.global_position = Vector2(3350, 418)
+    player.velocity = Vector2.ZERO
+    player.set_physics_process(true)
+    var first_gallery_landing := false
+    for frame in range(60):
+        await physics_frame
+        if player.is_on_floor():
+            first_gallery_landing = true
+            break
+    if not first_gallery_landing or player.health != 1 or player.global_position.y > 500.0:
+        _fail("The upper Resonance drop did not land safely on its first shelf at one heart")
+        return
+    player.global_position = Vector2(3490, 520)
+    player.velocity = Vector2.ZERO
+    var second_gallery_landing := false
+    for frame in range(60):
+        await physics_frame
+        if player.is_on_floor() and player.global_position.y > 520.0:
+            second_gallery_landing = true
+            break
+    if not second_gallery_landing or player.health != 1 or player.global_position.y > 590.0:
+        _fail("The second Resonance drop shelf did not catch a one-heart landing")
+        return
+    player.set_physics_process(false)
+    player.health = 3
+    player._update_health_scale()
 
     # A high-speed landing on solid ground must cause fall damage.
     for creature in get_nodes_in_group("enemies"):
