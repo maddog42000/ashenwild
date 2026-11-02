@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/elite_projectile.gd" id="1_elite_projectile"]
+
+[node name="EliteProjectile" type="Area2D"]
+script = ExtResource("1_elite_projectile")

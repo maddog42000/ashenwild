@@ -275,6 +275,12 @@ func is_player_in_attack_range(player: Node2D) -> bool:
     var player_facing := float(player.get("facing"))
     return absf(offset.x) <= 82.0 and absf(offset.y) <= 58.0 and offset.x * player_facing >= -8.0
 
+func is_arrow_target_hit(hit_position: Vector2) -> bool:
+    if not core_open or is_defeated:
+        return false
+    var target := global_position + Vector2(float(facing) * 98.0, -50.0)
+    return hit_position.distance_to(target) <= 30.0
+
 func take_damage(amount: int, hit_direction: int) -> void:
     if not active or is_defeated or not core_open:
         return

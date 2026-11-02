@@ -4,6 +4,9 @@ signal health_changed(current: int, maximum: int)
 signal died
 signal fall_damage_taken(amount: int)
 signal enemy_stomped
+signal arrow_shot_requested(origin: Vector2, direction: int, spread_angle: float, shooter_rid: RID)
+signal bow_state_changed
+signal shield_state_changed(durability: int, maximum: int)
 
 const BASE_SPEED := 260.0
 const SPEED_PER_MISSING_HEART := 90.0
@@ -24,6 +27,10 @@ const MAX_HEALTH := 3
 const FULL_HEALTH_BODY_SCALE := Vector2(0.27, 0.22)
 const BASE_COLLIDER_RADIUS := 15.0
 const BASE_COLLIDER_HEIGHT := 44.0
+const BOW_BASE_COOLDOWN_MS := 600
+const BOW_RAPID_COOLDOWN_MS := 260
+const BOW_BUFF_DURATION_SECONDS := 12.0
+const MAX_SHIELD_DURABILITY := 3
 
 var health := MAX_HEALTH
 var jumps_used := 0
@@ -36,10 +43,14 @@ var cheat_infinite_jumps := false
 var cheat_speed_boost := false
 var attack_ready_at := 0
 var vent_ready_at := 0
+var bow_ready_at := 0
+var shield_durability := MAX_SHIELD_DURABILITY
 var respawn_position := Vector2(120, 418)
 var body_shape: CapsuleShape2D
 var player_sprite: AnimatedSprite2D
 var fallback_visuals: Array[Node2D] = []
+var rapid_bow_timer: Timer
+var spread_bow_timer: Timer
 
 func _ready() -> void:
     collision_layer = 1
@@ -51,9 +62,20 @@ func _ready() -> void:
     collider.shape = body_shape
     add_child(collider)
     add_to_group("player")
+    rapid_bow_timer = _make_bow_timer("RapidBowTimer")
+    spread_bow_timer = _make_bow_timer("SpreadBowTimer")
     _make_visual()
     _update_health_scale()
     health_changed.emit(health, MAX_HEALTH)
+
+func _make_bow_timer(timer_name: String) -> Timer:
+    var timer := Timer.new()
+    timer.name = timer_name
+    timer.one_shot = true
+    timer.wait_time = BOW_BUFF_DURATION_SECONDS
+    timer.timeout.connect(_on_bow_timer_timeout)
+    add_child(timer)
+    return timer
 
 func _make_visual() -> void:
     player_sprite = AnimatedSprite2D.new()
@@ -125,6 +147,66 @@ func get_current_gravity() -> float:
 func get_current_fall_cap() -> float:
     return BASE_FALL_CAP + FALL_CAP_PER_MISSING_HEART * _missing_hearts()
 
+func get_current_bow_cooldown_ms() -> int:
+    return BOW_RAPID_COOLDOWN_MS if is_instance_valid(rapid_bow_timer) and not rapid_bow_timer.is_stopped() else BOW_BASE_COOLDOWN_MS
+
+func get_current_bow_arrow_count() -> int:
+    return 3 if is_instance_valid(spread_bow_timer) and not spread_bow_timer.is_stopped() else 1
+
+func activate_bow_pickup(effect: String) -> void:
+    if effect == "rapid" and is_instance_valid(rapid_bow_timer):
+        rapid_bow_timer.start(BOW_BUFF_DURATION_SECONDS)
+    elif effect == "spread" and is_instance_valid(spread_bow_timer):
+        spread_bow_timer.start(BOW_BUFF_DURATION_SECONDS)
+    else:
+        return
+    bow_state_changed.emit()
+
+func _on_bow_timer_timeout() -> void:
+    bow_state_changed.emit()
+
+func get_combat_status_text() -> String:
+    var effects: Array[String] = []
+    if is_instance_valid(rapid_bow_timer) and not rapid_bow_timer.is_stopped():
+        effects.append("QUICK %ds" % ceili(rapid_bow_timer.time_left))
+    if is_instance_valid(spread_bow_timer) and not spread_bow_timer.is_stopped():
+        effects.append("FAN %ds" % ceili(spread_bow_timer.time_left))
+    var effect_text := " · ".join(effects) if not effects.is_empty() else "BOW NORMAL"
+    var guard_text := "GUARD %d/%d" % [shield_durability, MAX_SHIELD_DURABILITY]
+    if Input.is_action_pressed("shield") and shield_durability > 0:
+        guard_text += " ACTIVE"
+    return "%s  ·  %s" % [effect_text, guard_text]
+
+func _shoot_bow() -> void:
+    if dead or Time.get_ticks_msec() < bow_ready_at:
+        return
+    bow_ready_at = Time.get_ticks_msec() + get_current_bow_cooldown_ms()
+    var angles: Array[float] = [0.0]
+    if get_current_bow_arrow_count() == 3:
+        angles = [-0.16, 0.0, 0.16]
+    for angle in angles:
+        arrow_shot_requested.emit(global_position + Vector2(float(facing) * 26.0, -6.0), facing, angle, get_rid())
+
+func restore_shield() -> void:
+    if shield_durability == MAX_SHIELD_DURABILITY:
+        return
+    shield_durability = MAX_SHIELD_DURABILITY
+    shield_state_changed.emit(shield_durability, MAX_SHIELD_DURABILITY)
+    queue_redraw()
+
+func try_block_projectile(source_x: float, source_enemy: Node2D = null) -> bool:
+    if dead or shield_durability <= 0 or not Input.is_action_pressed("shield"):
+        return false
+    var incoming_side := 1 if source_x > global_position.x else -1
+    if incoming_side != facing:
+        return false
+    shield_durability -= 1
+    shield_state_changed.emit(shield_durability, MAX_SHIELD_DURABILITY)
+    queue_redraw()
+    if is_instance_valid(source_enemy) and source_enemy.has_method("on_projectile_guarded"):
+        source_enemy.call_deferred("on_projectile_guarded")
+    return true
+
 func breathglass_burst() -> void:
     if dead or Time.get_ticks_msec() < vent_ready_at:
         return
@@ -160,6 +242,8 @@ func _physics_process(delta: float) -> void:
 
     if Input.is_action_just_pressed("attack") and Time.get_ticks_msec() >= attack_ready_at:
         _attack()
+    if Input.is_action_pressed("bow_fire") and Time.get_ticks_msec() >= bow_ready_at:
+        _shoot_bow()
 
     var fall_speed_before_landing := velocity.y
     move_and_slide()
@@ -167,6 +251,7 @@ func _physics_process(delta: float) -> void:
     if not stomped_enemy and not was_on_floor and is_on_floor() and fall_speed_before_landing >= FALL_DAMAGE_THRESHOLD:
         _apply_fall_damage(fall_speed_before_landing)
     _update_animation(direction)
+    queue_redraw()
     if global_position.y > 700.0:
         _die()
 
@@ -177,6 +262,11 @@ func _check_enemy_contacts(fall_speed_before_landing: float) -> bool:
         var collider := collision.get_collider()
         if collider is Node and collider.is_in_group("enemies") and collider.has_method("apply_contact_damage"):
             if collision.get_normal().y < -0.65 and fall_speed_before_landing > 0.0:
+                if collider.has_method("can_be_stomped") and not bool(collider.call("can_be_stomped")):
+                    velocity.y = -260.0
+                    jumps_used = 0
+                    stomped_enemy = true
+                    continue
                 collider.take_damage(1, facing)
                 velocity.y = -320.0
                 jumps_used = 0
@@ -252,6 +342,20 @@ func _die() -> void:
     velocity = Vector2.ZERO
     died.emit()
 
+func _draw() -> void:
+    if not InputMap.has_action("shield") or not Input.is_action_pressed("shield") or shield_durability <= 0 or dead:
+        return
+    var center := Vector2(float(facing) * 8.0, -3.0)
+    var start_angle := -PI * 0.5 if facing > 0 else PI * 0.5
+    var end_angle := PI * 0.5 if facing > 0 else PI * 1.5
+    var points := PackedVector2Array([center])
+    for index in range(13):
+        var angle := lerpf(start_angle, end_angle, float(index) / 12.0)
+        points.append(center + Vector2(cos(angle), sin(angle)) * 39.0)
+    draw_colored_polygon(points, Color(0.22, 0.76, 0.88, 0.26))
+    draw_arc(center, 39.0, start_angle, end_angle, 20, Color(0.58, 0.91, 0.97, 0.95), 4.0, true)
+    draw_line(center + Vector2(float(facing) * 24.0, -20.0), center + Vector2(float(facing) * 24.0, 20.0), Color(0.92, 0.97, 0.93, 0.88), 2.0, true)
+
 func respawn(at_position: Vector2) -> void:
     global_position = at_position
     velocity = Vector2.ZERO
@@ -259,6 +363,14 @@ func respawn(at_position: Vector2) -> void:
     jumps_used = 0
     dead = false
     invulnerable = false
+    bow_ready_at = 0
+    if is_instance_valid(rapid_bow_timer):
+        rapid_bow_timer.stop()
+    if is_instance_valid(spread_bow_timer):
+        spread_bow_timer.stop()
+    shield_durability = MAX_SHIELD_DURABILITY
     _update_health_scale()
     modulate = Color.WHITE
     health_changed.emit(health, MAX_HEALTH)
+    bow_state_changed.emit()
+    shield_state_changed.emit(shield_durability, MAX_SHIELD_DURABILITY)

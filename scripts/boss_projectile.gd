@@ -57,6 +57,9 @@ func _physics_process(delta: float) -> void:
 
 func _on_body_entered(body: Node2D) -> void:
     if body.is_in_group("player"):
+        if body.has_method("try_block_projectile") and bool(body.call("try_block_projectile", source_x)):
+            queue_free()
+            return
         body.call("take_damage", 1, source_x)
         queue_free()
     elif attack_kind == "ember" and body is StaticBody2D:
