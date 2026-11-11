@@ -169,6 +169,23 @@ func _run() -> void:
         _fail("Full-health movement profile is incorrect")
         return
 
+    # Parkour input should forgive the short timing gaps around ledges and landings.
+    player.set_physics_process(false)
+    player.velocity = Vector2.ZERO
+    player.jumps_used = 0
+    player.coyote_time_left = 0.08
+    player.jump_buffer_time_left = 0.08
+    if not player._consume_jump_if_buffered() or player.velocity.y >= -500.0 or player.jumps_used != 1:
+        _fail("Coyote-time jump did not consume a buffered jump after leaving a ledge")
+        return
+    player.jumps_used = 0
+    player.coyote_time_left = 0.0
+    player.jump_buffer_time_left = 0.08
+    if player._consume_jump_if_buffered():
+        _fail("Buffered jump incorrectly fired without floor contact or coyote time")
+        return
+    player.set_physics_process(true)
+
     var kettleback := _enemy_named("KettlebackBulwark")
     if not is_instance_valid(kettleback):
         _fail("Level 1 did not place the Kettleback Bulwark beside the Wisp Ladder")

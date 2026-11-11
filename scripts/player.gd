@@ -31,6 +31,8 @@ const BOW_BASE_COOLDOWN_MS := 600
 const BOW_RAPID_COOLDOWN_MS := 260
 const BOW_BUFF_DURATION_SECONDS := 12.0
 const MAX_SHIELD_DURABILITY := 3
+const COYOTE_TIME_SECONDS := 0.10
+const JUMP_BUFFER_SECONDS := 0.12
 
 var health := MAX_HEALTH
 var jumps_used := 0
@@ -51,6 +53,8 @@ var player_sprite: AnimatedSprite2D
 var fallback_visuals: Array[Node2D] = []
 var rapid_bow_timer: Timer
 var spread_bow_timer: Timer
+var coyote_time_left := 0.0
+var jump_buffer_time_left := 0.0
 
 func _ready() -> void:
     collision_layer = 1
@@ -153,6 +157,19 @@ func get_current_bow_cooldown_ms() -> int:
 func get_current_bow_arrow_count() -> int:
     return 3 if is_instance_valid(spread_bow_timer) and not spread_bow_timer.is_stopped() else 1
 
+func _consume_jump_if_buffered() -> bool:
+    if jump_buffer_time_left <= 0.0 or jumps_used >= get_current_jump_limit():
+        return false
+    if not is_on_floor() and coyote_time_left <= 0.0:
+        return false
+    var missing_hearts := _missing_hearts()
+    var launch_velocity := BASE_JUMP_VELOCITY + JUMP_BOOST_PER_MISSING_HEART * missing_hearts if jumps_used == 0 else BASE_DOUBLE_JUMP_VELOCITY + DOUBLE_JUMP_BOOST_PER_MISSING_HEART * missing_hearts
+    velocity.y = launch_velocity
+    jumps_used += 1
+    jump_buffer_time_left = 0.0
+    coyote_time_left = 0.0
+    return true
+
 func activate_bow_pickup(effect: String) -> void:
     if effect == "rapid" and is_instance_valid(rapid_bow_timer):
         rapid_bow_timer.start(BOW_BUFF_DURATION_SECONDS)
@@ -218,6 +235,14 @@ func _physics_process(delta: float) -> void:
     if dead:
         return
     var was_on_floor := is_on_floor()
+    if was_on_floor:
+        coyote_time_left = COYOTE_TIME_SECONDS
+    else:
+        coyote_time_left = maxf(0.0, coyote_time_left - delta)
+    if Input.is_action_just_pressed("jump"):
+        jump_buffer_time_left = JUMP_BUFFER_SECONDS
+    else:
+        jump_buffer_time_left = maxf(0.0, jump_buffer_time_left - delta)
     var direction := Input.get_axis("move_left", "move_right")
     var missing_hearts := _missing_hearts()
     var run_speed := get_current_speed()
@@ -231,10 +256,7 @@ func _physics_process(delta: float) -> void:
 
     if was_on_floor:
         jumps_used = 0
-    var jump_limit := get_current_jump_limit()
-    if Input.is_action_just_pressed("jump") and jumps_used < jump_limit:
-        velocity.y = BASE_JUMP_VELOCITY + JUMP_BOOST_PER_MISSING_HEART * missing_hearts if jumps_used == 0 else BASE_DOUBLE_JUMP_VELOCITY + DOUBLE_JUMP_BOOST_PER_MISSING_HEART * missing_hearts
-        jumps_used += 1
+    _consume_jump_if_buffered()
     if not was_on_floor:
         velocity.y = minf(velocity.y + get_current_gravity() * delta, get_current_fall_cap())
     if Input.is_action_just_released("jump") and velocity.y < -120.0:
@@ -364,6 +386,8 @@ func respawn(at_position: Vector2) -> void:
     dead = false
     invulnerable = false
     bow_ready_at = 0
+    coyote_time_left = 0.0
+    jump_buffer_time_left = 0.0
     if is_instance_valid(rapid_bow_timer):
         rapid_bow_timer.stop()
     if is_instance_valid(spread_bow_timer):
