@@ -19,6 +19,15 @@ func _enemy_named(expected_name: String) -> Node:
             return enemy
     return null
 
+func _button_named(root_node: Node, expected_text: String) -> Button:
+    for child in root_node.get_children():
+        if child is Button and child.text == expected_text:
+            return child
+        var nested := _button_named(child, expected_text)
+        if is_instance_valid(nested):
+            return nested
+    return null
+
 func _spawn_elite_projectile(main: Node, source: Node2D, kind: String, at: Vector2) -> Area2D:
     var shot := load("res://scenes/elite_projectile.tscn").instantiate() as Area2D
     var velocity := Vector2(-700.0 if source.global_position.x > at.x else 700.0, 0.0)
@@ -42,6 +51,9 @@ func _run() -> void:
         return
     if main.game_music_player.stream == null or not (main.game_music_player.stream is AudioStreamMP3) or not (main.game_music_player.stream as AudioStreamMP3).loop:
         _fail("User-provided gameplay MP3 did not load as a looping game stream")
+        return
+    if not is_instance_valid(_button_named(main.main_menu_panel, "TEST MAP — LUMINOUS CAVES")):
+        _fail("Main menu did not expose the Luminous Caves test map")
         return
     if int(ProjectSettings.get_setting("display/window/handheld/orientation")) != 4:
         _fail("Mobile orientation is not sensor landscape")
@@ -75,6 +87,19 @@ func _run() -> void:
     if not main.game_music_player.playing or main.music_player.playing:
         _fail("Starting the game did not switch from menu music to the supplied gameplay track")
         return
+    main._start_test_map()
+    await physics_frame
+    if main.current_level != 4 or main.level_world_width != 2200.0 or not ResourceLoader.exists("res://assets/backgrounds/luminous_caves_test.jpg"):
+        _fail("Luminous Caves test map did not load its supplied background")
+        return
+    if not _has_platform_at(main, Vector2(315, 240)) or not _has_platform_at(main, Vector2(2040, 520)):
+        _fail("Luminous Caves test map is missing its top-left or lower-right collision surfaces")
+        return
+    if get_nodes_in_group("enemies").size() < 7:
+        _fail("Luminous Caves test map did not populate its enemy trial encounters")
+        return
+    main._return_to_main_menu()
+    main._start_game()
     main._toggle_pause()
     if not main.paused or not main.pause_panel.visible or controls.visible or not main.game_music_player.stream_paused:
         _fail("Pause menu did not pause gameplay and hide movement controls")
@@ -179,6 +204,9 @@ func _run() -> void:
         _fail("Coyote-time jump did not consume a buffered jump after leaving a ledge")
         return
     player.jumps_used = 0
+    player.global_position = Vector2(120, 120)
+    player.velocity = Vector2.ZERO
+    player.move_and_slide()
     player.coyote_time_left = 0.0
     player.jump_buffer_time_left = 0.08
     if player._consume_jump_if_buffered():

@@ -8,6 +8,7 @@ const KETTLEBACK_SCENE := preload("res://scenes/kettleback_bulwark.tscn")
 const GLOAM_CANTOR_SCENE := preload("res://scenes/gloam_cantor.tscn")
 const MENU_MUSIC_PATH := "res://assets/audio/ashenwild_menu_theme.ogg"
 const GAME_MUSIC_PATH := "res://assets/audio/ashenwild_gameplay_theme.mp3"
+const TEST_MAP_PATH := "res://assets/backgrounds/luminous_caves_test.jpg"
 
 var player: CharacterBody2D
 var camera: Camera2D
@@ -232,8 +233,10 @@ func _build_level(level_id: int) -> void:
         _make_vent(Vector2(1625, 520))
         _make_vent(Vector2(3425, 520))
         _make_decorations([120.0, 470.0, 830.0, 1250.0, 1550.0, 1900.0, 2260.0, 2620.0, 2980.0, 3310.0, 3650.0, 4080.0])
-    else:
+    elif level_id == 3:
         _build_region_three()
+    else:
+        _build_test_map()
 
     _update_camera_limits()
     _refresh_hud()
@@ -298,6 +301,66 @@ func _build_region_three() -> void:
     boss.connect("defeated", Callable(self, "_on_boss_defeated"))
     _on_boss_health_changed(8, 8)
     _make_boss_gate(Vector2(920, 360), Vector2(995, 418))
+
+func _build_test_map() -> void:
+    level_world_width = 2200.0
+    var backdrop := Sprite2D.new()
+    backdrop.name = "LuminousCavesTestMap"
+    backdrop.texture = load(TEST_MAP_PATH) as Texture2D
+    backdrop.position = Vector2(1100.0, 471.5)
+    backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    backdrop.z_index = -10
+    level_root.add_child(backdrop)
+
+    # Collision follows the readable wooden bridges, stone shelves, and lower return paths.
+    # Decorative foliage, hanging roots, and empty dark cavities remain non-solid.
+    _test_collision(Vector2(315, 240), Vector2(430, 24))
+    _test_collision(Vector2(245, 520), Vector2(360, 24))
+    _test_collision(Vector2(560, 390), Vector2(140, 20))
+    _test_collision(Vector2(790, 255), Vector2(260, 22))
+    _test_collision(Vector2(1010, 205), Vector2(180, 20))
+    _test_collision(Vector2(1170, 300), Vector2(170, 20))
+    _test_collision(Vector2(1380, 235), Vector2(250, 22))
+    _test_collision(Vector2(1570, 405), Vector2(220, 20))
+    _test_collision(Vector2(1750, 285), Vector2(210, 22))
+    _test_collision(Vector2(1980, 190), Vector2(260, 22))
+    _test_collision(Vector2(2040, 520), Vector2(260, 24))
+    _test_collision(Vector2(820, 510), Vector2(280, 22))
+    _test_collision(Vector2(1180, 560), Vector2(180, 20))
+    _test_collision(Vector2(1430, 500), Vector2(260, 20))
+
+    checkpoint_position = Vector2(150, 206)
+    _make_checkpoint(Vector2(520, 220))
+    _make_checkpoint(Vector2(1450, 365))
+    _make_collectible(Vector2(1010, 160))
+    _make_bow_pickup(Vector2(1380, 190), "rapid")
+    _make_bow_pickup(Vector2(1750, 240), "spread")
+    _make_exit(Vector2(2070, 475))
+
+    _make_enemy(Vector2(380, 210))
+    _make_enemy(Vector2(850, 225))
+    _make_enemy(Vector2(1120, 175))
+    _make_enemy(Vector2(1450, 205))
+    _make_enemy(Vector2(1780, 255))
+    _make_enemy(Vector2(2000, 160))
+    _make_elite(KETTLEBACK_SCENE, Vector2(1570, 370))
+    _make_hazard(Vector2(620, 700), Vector2(180, 70))
+    _make_hazard(Vector2(1280, 700), Vector2(220, 70))
+    _make_decorations([90.0, 560.0, 860.0, 1180.0, 1510.0, 1850.0, 2140.0])
+
+func _test_collision(center: Vector2, size: Vector2) -> void:
+    var body := StaticBody2D.new()
+    body.position = center
+    body.set_meta("platform_size", size)
+    body.collision_layer = 1
+    body.collision_mask = 1
+    body.add_to_group("platforms")
+    var shape := RectangleShape2D.new()
+    shape.size = size
+    var collider := CollisionShape2D.new()
+    collider.shape = shape
+    body.add_child(collider)
+    level_root.add_child(body)
 
 func _make_scenery(world_width: float, warmer: bool) -> void:
     var scenery := Node2D.new()
@@ -609,7 +672,7 @@ func _build_hud() -> void:
     menu_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     main_menu_panel.add_child(menu_center)
     var menu_card := PanelContainer.new()
-    menu_card.custom_minimum_size = Vector2(480, 480)
+    menu_card.custom_minimum_size = Vector2(480, 540)
     _style_card(menu_card)
     menu_center.add_child(menu_card)
     var menu_stack := VBoxContainer.new()
@@ -621,6 +684,7 @@ func _build_hud() -> void:
     subtitle.add_theme_color_override("font_color", Color(0.65, 0.82, 0.75))
     menu_stack.add_child(subtitle)
     menu_stack.add_child(_make_menu_button("BEGIN JOURNEY", _start_game))
+    menu_stack.add_child(_make_menu_button("TEST MAP — LUMINOUS CAVES", _start_test_map))
     var cheat_heading := _make_heading("OPTIONAL CHEATS", 16)
     cheat_heading.add_theme_color_override("font_color", Color(0.94, 0.70, 0.42))
     menu_stack.add_child(cheat_heading)
@@ -743,6 +807,29 @@ func _start_game() -> void:
     _update_music_playback()
     _show_message("THE FORGOTTEN HOLLOW  •  Find the teal shard, then reach the gate", 3.0)
 
+func _start_test_map() -> void:
+    game_started = true
+    paused = false
+    completed = false
+    get_tree().paused = false
+    main_menu_panel.visible = false
+    pause_panel.visible = false
+    level_root.visible = true
+    player.visible = true
+    player.set_physics_process(true)
+    health_label.visible = true
+    shard_label.visible = true
+    combat_label.visible = true
+    controls.visible = true
+    controls.set_process_input(true)
+    resume_button.visible = true
+    checkpoint_position = Vector2(150, 206)
+    _build_level(4)
+    player.respawn(checkpoint_position)
+    _refresh_hud()
+    _update_music_playback()
+    _show_message("TEST MAP — LUMINOUS CAVES  •  Explore the marked bridges and lower routes", 4.0)
+
 func _resume_game() -> void:
     if completed:
         return
@@ -851,6 +938,8 @@ func _refresh_hud() -> void:
             level_name = "THE PALE SPINE"
         elif current_level == 3:
             level_name = "THE HUSHVAULT"
+        elif current_level == 4:
+            level_name = "LUMINOUS CAVES TEST MAP"
         shard_label.text = "LEVEL %d: %s  •  SHARD %d/1" % [current_level, level_name, shards]
 
 func _show_message(text: String, seconds: float) -> void:
