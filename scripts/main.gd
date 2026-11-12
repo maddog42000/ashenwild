@@ -39,6 +39,7 @@ var game_started := false
 var main_menu_panel: ColorRect
 var pause_title: Label
 var resume_button: Button
+var return_title_button: Button
 var music_player: AudioStreamPlayer
 var game_music_player: AudioStreamPlayer
 var music_toggle_buttons: Array[CheckButton] = []
@@ -132,6 +133,10 @@ func _build_level(level_id: int) -> void:
         _platform(Vector2(2130, 190), Vector2(150, 22), Color(0.33, 0.46, 0.39))
         _platform(Vector2(1940, 210), Vector2(150, 22), Color(0.33, 0.46, 0.39))
         _platform(Vector2(1580, 355), Vector2(150, 22), Color(0.33, 0.46, 0.39))
+        # Hollow drop route: step down through the gap, then climb back to the east floor.
+        _platform(Vector2(1195, 500), Vector2(130, 18), Color(0.38, 0.53, 0.48))
+        _platform(Vector2(1305, 565), Vector2(120, 18), Color(0.38, 0.53, 0.48))
+        _platform(Vector2(1385, 500), Vector2(110, 18), Color(0.38, 0.53, 0.48))
         # Ashglass Switchback: climb right, reverse left over the crest, then drop back to the ridge.
         _platform(Vector2(2880, 200), Vector2(120, 20), Color(0.43, 0.51, 0.43))
         _platform(Vector2(2750, 125), Vector2(120, 20), Color(0.43, 0.51, 0.43))
@@ -187,6 +192,10 @@ func _build_level(level_id: int) -> void:
         # Drop passage in the central gap: every fall is caught before the hazard shelf.
         _platform(Vector2(2360, 525), Vector2(150, 18), Color(0.48, 0.37, 0.31))
         _platform(Vector2(2480, 585), Vector2(150, 18), Color(0.48, 0.37, 0.31))
+        # Pale Spine underpass: drop below the ridge, reverse direction, and surface by the checkpoint.
+        _platform(Vector2(1450, 520), Vector2(120, 18), Color(0.46, 0.55, 0.48))
+        _platform(Vector2(1585, 575), Vector2(120, 18), Color(0.46, 0.55, 0.48))
+        _platform(Vector2(1735, 520), Vector2(120, 18), Color(0.46, 0.55, 0.48))
         # Resonance Gallery: climb high, double back, then descend shelf-by-shelf
         # through the 3300–3550 pit and jump back to the far-side floor.
         _platform(Vector2(3360, 355), Vector2(120, 20), Color(0.46, 0.62, 0.57))
@@ -308,6 +317,7 @@ func _update_camera_limits() -> void:
 func _platform(center: Vector2, size: Vector2, tint: Color) -> void:
     var body := StaticBody2D.new()
     body.position = center
+    body.set_meta("platform_size", size)
     body.collision_layer = 1
     body.collision_mask = 1
     body.add_to_group("platforms")
@@ -395,7 +405,7 @@ func _make_bow_pickup(at: Vector2, effect: String) -> void:
 func _make_stillheart(at: Vector2) -> void:
     stillheart_visual = Node2D.new()
     stillheart_visual.name = "Stillheart"
-    stillheart_visual.position = at + Vector2(0, -28)
+    stillheart_visual.position = at + Vector2(0, -42)
     var halo := Polygon2D.new()
     halo.polygon = PackedVector2Array([Vector2(0, -22), Vector2(17, 0), Vector2(0, 22), Vector2(-17, 0)])
     halo.color = Color(0.96, 0.49, 0.24, 0.38)
@@ -405,7 +415,7 @@ func _make_stillheart(at: Vector2) -> void:
     core.color = Color(1.0, 0.75, 0.39)
     stillheart_visual.add_child(core)
     level_root.add_child(stillheart_visual)
-    stillheart_area = _new_trigger("StillheartPickup", at, Vector2(58, 70))
+    stillheart_area = _new_trigger("StillheartPickup", at, Vector2(96, 112))
     stillheart_area.body_entered.connect(_on_stillheart_entered.bind(stillheart_area, stillheart_visual))
 
 func _make_exit(at: Vector2) -> void:
@@ -424,8 +434,28 @@ func _make_exit(at: Vector2) -> void:
 
 func _make_enemy(at: Vector2) -> void:
     var enemy := ENEMY_SCENE.instantiate()
-    enemy.position = at
+    enemy.position = _surface_spawn_position(at, 17.0)
     level_root.add_child(enemy)
+
+func _surface_spawn_position(requested: Vector2, half_height: float) -> Vector2:
+    var best_top := INF
+    var best_distance := INF
+    for platform in level_root.get_children():
+        if not is_instance_valid(platform) or not platform is StaticBody2D or not platform.has_meta("platform_size"):
+            continue
+        var size: Vector2 = platform.get_meta("platform_size")
+        var left: float = platform.position.x - size.x * 0.5
+        var right: float = platform.position.x + size.x * 0.5
+        if requested.x < left + 8.0 or requested.x > right - 8.0:
+            continue
+        var top: float = platform.position.y - size.y * 0.5
+        var distance := absf(top - requested.y)
+        if distance < best_distance:
+            best_distance = distance
+            best_top = top
+    if best_top == INF:
+        return requested
+    return Vector2(requested.x, best_top - half_height)
 
 func _make_elite(scene: PackedScene, at: Vector2) -> void:
     var elite := scene.instantiate() as Node2D
@@ -565,8 +595,8 @@ func _build_hud() -> void:
     pause_stack.add_child(pause_cheats)
     var pause_music := _make_music_toggle()
     pause_stack.add_child(pause_music)
-    var return_button := _make_menu_button("RETURN TO TITLE", _return_to_main_menu)
-    pause_stack.add_child(return_button)
+    return_title_button = _make_menu_button("RETURN TO TITLE", _return_to_main_menu)
+    pause_stack.add_child(return_title_button)
 
     main_menu_panel = ColorRect.new()
     main_menu_panel.name = "MainMenu"
@@ -918,8 +948,10 @@ func _complete_game() -> void:
     pause_panel.visible = true
     controls.visible = false
     controls.set_process_input(false)
-    pause_title.text = "THE HUSHVAULT CLEARED"
+    pause_title.text = "STAGE COMPLETE — THANKS FOR PLAYING"
     resume_button.visible = false
+    return_title_button.visible = true
+    _show_message("THE STILLHEART RESTORED THE HUSHVAULT", 4.0)
     _update_music_playback()
 
 func _on_hazard_entered(body: Node2D) -> void:
@@ -977,9 +1009,9 @@ func _on_boss_defeated() -> void:
         arena_gate_shape.set_deferred("disabled", true)
     if is_instance_valid(arena_gate_visual):
         arena_gate_visual.visible = false
-    if is_instance_valid(boss):
+    if is_instance_valid(boss) and not is_instance_valid(stillheart_area):
         _make_stillheart(boss.global_position)
-    _show_message("THE HUSHVAULT'S BELL GOES QUIET — THE EXIT IS OPEN", 3.0)
+    _show_message("THE BELLOWS SAINT FALLS — CLAIM THE STILLHEART", 3.0)
 
 func _on_player_died() -> void:
     for projectile in get_tree().get_nodes_in_group("elite_projectiles"):

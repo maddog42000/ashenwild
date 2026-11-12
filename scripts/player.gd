@@ -160,7 +160,7 @@ func get_current_bow_arrow_count() -> int:
 func _consume_jump_if_buffered() -> bool:
     if jump_buffer_time_left <= 0.0 or jumps_used >= get_current_jump_limit():
         return false
-    if not is_on_floor() and coyote_time_left <= 0.0:
+    if jumps_used == 0 and not is_on_floor() and coyote_time_left <= 0.0:
         return false
     var missing_hearts := _missing_hearts()
     var launch_velocity := BASE_JUMP_VELOCITY + JUMP_BOOST_PER_MISSING_HEART * missing_hearts if jumps_used == 0 else BASE_DOUBLE_JUMP_VELOCITY + DOUBLE_JUMP_BOOST_PER_MISSING_HEART * missing_hearts
@@ -259,9 +259,6 @@ func _physics_process(delta: float) -> void:
     _consume_jump_if_buffered()
     if not was_on_floor:
         velocity.y = minf(velocity.y + get_current_gravity() * delta, get_current_fall_cap())
-    if Input.is_action_just_released("jump") and velocity.y < -120.0:
-        velocity.y = -120.0
-
     if Input.is_action_just_pressed("attack") and Time.get_ticks_msec() >= attack_ready_at:
         _attack()
     if Input.is_action_pressed("bow_fire") and Time.get_ticks_msec() >= bow_ready_at:

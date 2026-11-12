@@ -184,11 +184,23 @@ func _run() -> void:
     if player._consume_jump_if_buffered():
         _fail("Buffered jump incorrectly fired without floor contact or coyote time")
         return
+    player.jumps_used = 1
+    player.jump_buffer_time_left = 0.08
+    if not player._consume_jump_if_buffered() or player.velocity.y >= -450.0 or player.jumps_used != 2:
+        _fail("Second jump tap did not fire while airborne")
+        return
     player.set_physics_process(true)
 
     var kettleback := _enemy_named("KettlebackBulwark")
     if not is_instance_valid(kettleback):
         _fail("Level 1 did not place the Kettleback Bulwark beside the Wisp Ladder")
+        return
+    var ash_mite := _enemy_named("AshMite")
+    if not is_instance_valid(ash_mite) or absf(ash_mite.global_position.y - 420.0) > 1.0:
+        _fail("Ash Mite was not snapped cleanly onto the ground platform surface: %s" % ash_mite.global_position if is_instance_valid(ash_mite) else "Ash Mite was not spawned")
+        return
+    if not _has_platform_at(main, Vector2(1195, 500)) or not _has_platform_at(main, Vector2(1305, 565)):
+        _fail("Level 1 is missing its lower drop-and-return route")
         return
     player.set_physics_process(false)
     kettleback.set_physics_process(false)
@@ -384,6 +396,9 @@ func _run() -> void:
         return
     if not _has_platform_at(main, Vector2(3290, 285)) or not _has_platform_at(main, Vector2(2480, 585)):
         _fail("Level 2 is missing its upward-left ridge or safe downward catch ledge")
+        return
+    if not _has_platform_at(main, Vector2(1450, 520)) or not _has_platform_at(main, Vector2(1585, 575)) or not _has_platform_at(main, Vector2(1735, 520)):
+        _fail("Level 2 is missing its lower reverse-direction underpass")
         return
     if not _has_platform_at(main, Vector2(3360, 355)) or not _has_platform_at(main, Vector2(3510, 195)) or not _has_platform_at(main, Vector2(3445, 560)) or not _has_platform_at(main, Vector2(3490, 490)):
         _fail("Resonance Gallery is missing its upper climb or staged lower drop-and-return route")
@@ -677,6 +692,9 @@ func _run() -> void:
     main._on_exit_entered(player)
     if not main.completed:
         _fail("Hushvault exit failed to complete the three-region prototype")
+        return
+    if main.pause_title.text != "STAGE COMPLETE — THANKS FOR PLAYING" or main.resume_button.visible:
+        _fail("Final exit did not show the dedicated stage-complete screen")
         return
     main._return_to_main_menu()
     if main.game_started or main.current_level != 1 or not main.main_menu_panel.visible or not paused:
