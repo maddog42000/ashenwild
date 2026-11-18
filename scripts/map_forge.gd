@@ -581,6 +581,13 @@ func _refresh_palette() -> void:
 			child.button_pressed = child.text == active_kind
 			child.modulate = Color.WHITE if child.text == active_kind else Color(0.78, 0.82, 0.84)
 
+func return_from_test() -> void:
+	visible = true
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_refresh_maps()
+	status.text = "Returned from test. Your editor session is intact."
+	queue_redraw()
+
 func _close() -> void:
 	closed.emit()
 	queue_free()
