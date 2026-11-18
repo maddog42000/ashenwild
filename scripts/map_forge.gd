@@ -136,7 +136,7 @@ func _build_ui() -> void:
     jump_button.pressed.connect(_test_jump)
     test_controls.add_child(jump_button)
 
-func _style_panel(panel: Panel) -> void:
+func _style_panel(panel: Control) -> void:
     var sb := StyleBoxFlat.new()
     sb.bg_color = Color(0.035, 0.055, 0.075, 0.98)
     sb.border_color = Color(0.27, 0.58, 0.53)
