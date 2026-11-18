@@ -1163,6 +1163,8 @@ func _on_player_died() -> void:
     for projectile in get_tree().get_nodes_in_group("elite_projectiles"):
         projectile.queue_free()
     for enemy in get_tree().get_nodes_in_group("enemies"):
+        if enemy.has_method("set_adaptive_speed_multiplier"):
+            enemy.call("set_adaptive_speed_multiplier", AshenProfile.get_enemy_speed_multiplier())
         if enemy.has_method("cancel_pending_attack"):
             enemy.call("cancel_pending_attack")
     if is_instance_valid(boss) and not bool(boss.get("is_defeated")):
