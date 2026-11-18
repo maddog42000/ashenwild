@@ -125,3 +125,11 @@ func load_profile() -> void:
         death_drop_position = Vector2(float(position_data[0]), float(position_data[1]))
     else:
         death_drop_position = Vector2.ZERO
+    # If the app was closed while a drop existed, restore the amount to carried
+    # currency rather than leave an unreachable world-space pickup behind.
+    if death_drop_active:
+        carried_embers += death_drop_amount
+        death_drop_amount = 0
+        death_drop_active = false
+        death_drop_position = Vector2.ZERO
+        save_profile()
