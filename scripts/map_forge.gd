@@ -42,6 +42,7 @@ var delete_dialog: ConfirmationDialog
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	data = MapForgeData.make_new("Untitled Hollow", 40, 20)
 	_record()
@@ -178,20 +179,16 @@ func _build_ui() -> void:
 	var row_b := HBoxContainer.new()
 	tool_rows.add_child(row_a)
 	tool_rows.add_child(row_b)
-	for item in [
-		["UNDO", _undo], ["REDO", _redo], ["GRID", _toggle_grid],
-		["CLEAR", _clear_map], ["RANDOMIZE", _randomize]
-	]:
-		var b := _button(item[0], item[1])
-		b.custom_minimum_size = Vector2(88, 38)
-		row_a.add_child(b)
-	for item in [
-		["SAVE", _save_map], ["LOAD", _load_map], ["DUPLICATE", _duplicate_map],
-		["DELETE", _ask_delete], ["TEST MAP", _test_map]
-	]:
-		var b := _button(item[0], item[1])
-		b.custom_minimum_size = Vector2(88, 38)
-		row_b.add_child(b)
+	_add_toolbar_button(row_a, "UNDO", _undo)
+	_add_toolbar_button(row_a, "REDO", _redo)
+	_add_toolbar_button(row_a, "GRID", _toggle_grid)
+	_add_toolbar_button(row_a, "CLEAR", _clear_map)
+	_add_toolbar_button(row_a, "RANDOMIZE", _randomize)
+	_add_toolbar_button(row_b, "SAVE", _save_map)
+	_add_toolbar_button(row_b, "LOAD", _load_map)
+	_add_toolbar_button(row_b, "DUPLICATE", _duplicate_map)
+	_add_toolbar_button(row_b, "DELETE", _ask_delete)
+	_add_toolbar_button(row_b, "TEST MAP", _test_map)
 
 	delete_dialog = ConfirmationDialog.new()
 	delete_dialog.title = "Delete saved map?"
@@ -568,6 +565,11 @@ func _toggle_grid() -> void:
 	grid_visible = not grid_visible
 	status.text = "Grid %s." % ("shown" if grid_visible else "hidden")
 	queue_redraw()
+
+func _add_toolbar_button(parent: HBoxContainer, label_text: String, action: Callable) -> void:
+	var button := _button(label_text, action)
+	button.custom_minimum_size = Vector2(88, 38)
+	parent.add_child(button)
 
 func _button(label_text: String, action: Callable) -> Button:
 	var button := Button.new()
