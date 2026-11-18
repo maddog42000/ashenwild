@@ -9,6 +9,7 @@ static func build(host: Node, level_root: Node2D, data: Dictionary) -> Vector2:
 	var tiles: Array = data.get("tiles", [])
 	var world_width: float = float(width) * TILE_SIZE
 	host.call("_make_scenery", world_width, true)
+	_add_world_bounds(host, level_root, world_width, float(height) * TILE_SIZE)
 	_build_terrain(host, level_root, tiles, width, height)
 	_build_objects(host, level_root, data.get("objects", []))
 	var spawn_data: Dictionary = data.get("spawn", {"x": 2, "y": height - 4})
@@ -16,6 +17,21 @@ static func build(host: Node, level_root: Node2D, data: Dictionary) -> Vector2:
 	var spawn_y: int = clampi(int(spawn_data.get("y", height - 4)), 0, height - 2)
 	var spawn := Vector2(float(spawn_x) * TILE_SIZE + TILE_SIZE * 0.5, float(spawn_y + 1) * TILE_SIZE - 19.0)
 	return spawn
+
+static func _add_world_bounds(host: Node, level_root: Node2D, world_width: float, world_height: float) -> void:
+	for wall_x in [0.0, world_width]:
+		var wall := StaticBody2D.new()
+		wall.name = "CustomMapBoundary"
+		wall.position = Vector2(wall_x, world_height * 0.5)
+		wall.collision_layer = 1
+		wall.collision_mask = 1
+		var shape := RectangleShape2D.new()
+		shape.size = Vector2(24.0, world_height + 48.0)
+		var collider := CollisionShape2D.new()
+		collider.shape = shape
+		wall.add_child(collider)
+		level_root.add_child(wall)
+	host.call("_make_hazard", Vector2(world_width * 0.5, world_height + 42.0), Vector2(world_width, 72.0))
 
 static func _build_terrain(host: Node, level_root: Node2D, tiles: Array, width: int, height: int) -> void:
 	for y in range(height):
