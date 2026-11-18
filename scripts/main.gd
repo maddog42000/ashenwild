@@ -943,7 +943,8 @@ func _on_map_forge_closed() -> void:
     if is_instance_valid(map_forge_layer):
         map_forge_layer.queue_free()
     map_forge_layer = null
-    _show_main_menu()
+    if not game_started:
+        _show_main_menu()
 
 func _start_game() -> void:
     game_started = true
