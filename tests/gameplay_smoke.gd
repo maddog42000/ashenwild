@@ -139,8 +139,19 @@ func _run() -> void:
         _fail("Map Forge could not delete a duplicate")
         return
     forge.set("data", saved_data)
+    forge.call("_sync_fields")
     var forge_name_field: LineEdit = forge.get("name_field")
     forge_name_field.text = "Map Forge Smoke"
+    var editor_canvas: Rect2 = forge.get("canvas_rect")
+    var editor_cell_size: float = forge.get("cell_size")
+    var editor_origin: Vector2 = editor_canvas.position + (editor_canvas.size - Vector2(32, 18) * editor_cell_size) * 0.5
+    forge.call("_choose_kind", "MOSS")
+    forge.call("_paint", editor_origin + Vector2(5.5, 10.5) * editor_cell_size)
+    var painted_data: Dictionary = forge.get("data")
+    if int(painted_data["tiles"][10][5]) != 2:
+        _fail("Map Forge paint tool did not update the visible tile data")
+        return
+    forge.call("_undo")
     forge.call("_test_map")
     await physics_frame
     if main.current_level != 99 or not main.game_started or not main.custom_map_active:
