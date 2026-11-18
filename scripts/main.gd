@@ -302,7 +302,7 @@ func _build_region_three() -> void:
     _make_decorations([110.0, 320.0, 540.0, 740.0, 865.0, 1080.0, 1310.0, 1490.0, 1810.0, 1990.0, 2220.0, 2410.0])
 
     boss = BOSS_SCENE.instantiate() as Node2D
-    boss.position = Vector2(1650, 418)
+    boss.position = _surface_spawn_position(Vector2(1650, 418), 10.0)
     level_root.add_child(boss)
     boss.connect("health_changed", Callable(self, "_on_boss_health_changed"))
     boss.connect("encounter_started", Callable(self, "_on_boss_started"))
@@ -518,7 +518,7 @@ func _surface_spawn_position(requested: Vector2, half_height: float) -> Vector2:
             best_top = top
     if best_top == INF:
         return requested
-    return Vector2(requested.x, best_top - half_height)
+    return Vector2(requested.x, best_top - half_height - 1.0)
 
 func _make_elite(scene: PackedScene, at: Vector2) -> void:
     var elite := scene.instantiate() as Node2D
