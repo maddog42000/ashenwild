@@ -90,6 +90,7 @@ func _run() -> void:
     if not main.game_music_player.playing or main.music_player.playing:
         _fail("Starting the game did not switch from menu music to the supplied gameplay track")
         return
+    main._return_to_main_menu()
     main._open_map_forge()
     await process_frame
     if not is_instance_valid(main.map_forge_layer) or main.map_forge_layer.get_child_count() == 0:
