@@ -8,8 +8,8 @@ const KETTLEBACK_SCENE := preload("res://scenes/kettleback_bulwark.tscn")
 const GLOAM_CANTOR_SCENE := preload("res://scenes/gloam_cantor.tscn")
 const MENU_MUSIC_PATH := "res://assets/audio/ashenwild_menu_theme.ogg"
 const GAME_MUSIC_PATH := "res://assets/audio/ashenwild_gameplay_theme.mp3"
-const TEST_MAP_PATH := "res://assets/backgrounds/luminous_caves_test.jpg"
 const MAP_FORGE_SCENE := preload("res://scenes/map_forge.tscn")
+const CUSTOM_MAP_RUNTIME := preload("res://scripts/custom_map_runtime.gd")
 
 var player: CharacterBody2D
 var camera: Camera2D
@@ -50,6 +50,9 @@ var cheat_options := {"invulnerable": false, "infinite_jumps": false, "speed_boo
 var menu_music_enabled := true
 var map_forge_layer: CanvasLayer
 var active_custom_map_name := ""
+var active_custom_map_data: Dictionary = {}
+var custom_map_active := false
+var return_to_editor_button: Button
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -240,7 +243,7 @@ func _build_level(level_id: int) -> void:
     elif level_id == 3:
         _build_region_three()
     else:
-        _build_test_map()
+        level_world_width = 1600.0
 
     _update_camera_limits()
     _refresh_hud()
@@ -305,66 +308,6 @@ func _build_region_three() -> void:
     boss.connect("defeated", Callable(self, "_on_boss_defeated"))
     _on_boss_health_changed(8, 8)
     _make_boss_gate(Vector2(920, 360), Vector2(995, 418))
-
-func _build_test_map() -> void:
-    level_world_width = 2200.0
-    var backdrop := Sprite2D.new()
-    backdrop.name = "LuminousCavesTestMap"
-    backdrop.texture = load(TEST_MAP_PATH) as Texture2D
-    backdrop.position = Vector2(1100.0, 471.5)
-    backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-    backdrop.z_index = -10
-    level_root.add_child(backdrop)
-
-    # Collision follows the readable wooden bridges, stone shelves, and lower return paths.
-    # Decorative foliage, hanging roots, and empty dark cavities remain non-solid.
-    _test_collision(Vector2(315, 240), Vector2(430, 24))
-    _test_collision(Vector2(245, 520), Vector2(360, 24))
-    _test_collision(Vector2(560, 390), Vector2(140, 20))
-    _test_collision(Vector2(790, 255), Vector2(260, 22))
-    _test_collision(Vector2(1010, 205), Vector2(180, 20))
-    _test_collision(Vector2(1170, 300), Vector2(170, 20))
-    _test_collision(Vector2(1380, 235), Vector2(250, 22))
-    _test_collision(Vector2(1570, 405), Vector2(220, 20))
-    _test_collision(Vector2(1750, 285), Vector2(210, 22))
-    _test_collision(Vector2(1980, 190), Vector2(260, 22))
-    _test_collision(Vector2(2040, 520), Vector2(260, 24))
-    _test_collision(Vector2(820, 510), Vector2(280, 22))
-    _test_collision(Vector2(1180, 560), Vector2(180, 20))
-    _test_collision(Vector2(1430, 500), Vector2(260, 20))
-
-    checkpoint_position = Vector2(150, 206)
-    _make_checkpoint(Vector2(520, 220))
-    _make_checkpoint(Vector2(1450, 365))
-    _make_collectible(Vector2(1010, 160))
-    _make_bow_pickup(Vector2(1380, 190), "rapid")
-    _make_bow_pickup(Vector2(1750, 240), "spread")
-    _make_exit(Vector2(2070, 475))
-
-    _make_enemy(Vector2(380, 210))
-    _make_enemy(Vector2(850, 225))
-    _make_enemy(Vector2(1120, 175))
-    _make_enemy(Vector2(1450, 205))
-    _make_enemy(Vector2(1780, 255))
-    _make_enemy(Vector2(2000, 160))
-    _make_elite(KETTLEBACK_SCENE, Vector2(1570, 370))
-    _make_hazard(Vector2(620, 700), Vector2(180, 70))
-    _make_hazard(Vector2(1280, 700), Vector2(220, 70))
-    _make_decorations([90.0, 560.0, 860.0, 1180.0, 1510.0, 1850.0, 2140.0])
-
-func _test_collision(center: Vector2, size: Vector2) -> void:
-    var body := StaticBody2D.new()
-    body.position = center
-    body.set_meta("platform_size", size)
-    body.collision_layer = 1
-    body.collision_mask = 1
-    body.add_to_group("platforms")
-    var shape := RectangleShape2D.new()
-    shape.size = size
-    var collider := CollisionShape2D.new()
-    collider.shape = shape
-    body.add_child(collider)
-    level_root.add_child(body)
 
 func _make_scenery(world_width: float, warmer: bool) -> void:
     var scenery := Node2D.new()
@@ -714,6 +657,9 @@ func _build_hud() -> void:
     pause_stack.add_child(pause_music)
     return_title_button = _make_menu_button("RETURN TO TITLE", _return_to_main_menu)
     pause_stack.add_child(return_title_button)
+    return_to_editor_button = _make_menu_button("RETURN TO MAP FORGE", _return_to_map_forge)
+    return_to_editor_button.visible = false
+    pause_stack.add_child(return_to_editor_button)
 
     main_menu_panel = ColorRect.new()
     main_menu_panel.name = "MainMenu"
@@ -738,7 +684,6 @@ func _build_hud() -> void:
     subtitle.add_theme_color_override("font_color", Color(0.65, 0.82, 0.75))
     menu_stack.add_child(subtitle)
     menu_stack.add_child(_make_menu_button("BEGIN JOURNEY", _start_game))
-    menu_stack.add_child(_make_menu_button("TEST MAP — LUMINOUS CAVES", _start_test_map))
     menu_stack.add_child(_make_menu_button("MAP FORGE — CREATE YOUR OWN", _open_map_forge))
     var cheat_heading := _make_heading("OPTIONAL CHEATS", 16)
     cheat_heading.add_theme_color_override("font_color", Color(0.94, 0.70, 0.42))
@@ -859,85 +804,55 @@ func _open_map_forge() -> void:
 
 
 func _start_custom_map(data: Dictionary) -> void:
-    var map_cells: Array = data.get("cells", [])
-    var map_width := int(data.get("width", 0))
-    var map_height := int(data.get("height", 0))
-    if map_width < 8 or map_width > 100 or map_height < 8 or map_height > 60 or map_cells.size() != map_height:
-        _show_message("CUSTOM MAP INVALID — CHECK GRID SIZE", 3.0)
-        return
-    for row in map_cells:
-        if not row is Array or row.size() != map_width:
-            _show_message("CUSTOM MAP INVALID — GRID DATA", 3.0)
-            return
-    _build_level(99)
-    for child in level_root.get_children():
-        level_root.remove_child(child)
-        child.queue_free()
-    current_level = 99
-    active_custom_map_name = str(data.get("name", "Custom Hollow"))
-    level_world_width = float(map_width * 24)
-    var solids := [1, 2]
-    for y in range(map_height):
-        var x := 0
-        while x < map_width:
-            var tile_id := int(map_cells[y][x])
-            if tile_id in solids:
-                var run_start := x
-                while x < map_width and int(map_cells[y][x]) == tile_id:
-                    x += 1
-                var run_width := x - run_start
-                var tint := Color(0.29, 0.34, 0.35) if tile_id == 1 else Color(0.25, 0.48, 0.37)
-                _platform(Vector2((run_start + run_width * 0.5) * 24.0, (y + 0.5) * 24.0), Vector2(run_width * 24.0, 24.0), tint)
-            else:
-                x += 1
-    var spawn := Vector2(60, float(map_height - 3) * 24.0)
-    var exit_count := 0
-    for y in range(map_height):
-        for x in range(map_width):
-            var tile_id := int(map_cells[y][x])
-            var at := Vector2((x + 0.5) * 24.0, (y + 0.5) * 24.0)
-            if tile_id == 3:
-                _make_hazard(at + Vector2(0, 24), Vector2(24, 18))
-            elif tile_id == 4:
-                _make_enemy(at + Vector2(0, 8))
-            elif tile_id == 5:
-                _make_collectible(at)
-            elif tile_id == 6:
-                _make_checkpoint(at + Vector2(0, 12))
-            elif tile_id == 7:
-                _make_exit(at + Vector2(0, 12))
-                exit_count += 1
-            elif tile_id == 8:
-                var crystal := Polygon2D.new()
-                crystal.position = at
-                crystal.polygon = PackedVector2Array([Vector2(0, -10), Vector2(7, 0), Vector2(0, 10), Vector2(-7, 0)])
-                crystal.color = Color(0.35, 0.62, 0.98)
-                level_root.add_child(crystal)
-    player.respawn_position = spawn
-    checkpoint_position = spawn
-    player.respawn(spawn)
-    player.visible = true
-    player.set_physics_process(true)
-    game_started = true
-    paused = false
-    completed = false
-    get_tree().paused = false
-    main_menu_panel.visible = false
-    pause_panel.visible = false
-    level_root.visible = true
-    health_label.visible = true
-    shard_label.visible = true
-    combat_label.visible = true
-    controls.visible = true
-    controls.set_process_input(true)
-    resume_button.visible = true
-    _update_camera_limits()
-    _refresh_hud()
-    _update_music_playback()
-    var note := "CUSTOM MAP: %s" % active_custom_map_name
-    if exit_count == 0:
-        note += "  •  Add an EXIT tile to finish"
-    _show_message(note, 4.0)
+	var validation_error: String = MapForgeData.validate_playable(data)
+	if not validation_error.is_empty():
+		_show_message("CUSTOM MAP INVALID — " + validation_error, 3.0)
+		return
+	if is_instance_valid(level_root):
+		level_root.queue_free()
+	level_root = Node2D.new()
+	level_root.name = "CustomMapRuntime"
+	add_child(level_root)
+	move_child(level_root, 0)
+	current_level = 99
+	shards = 0
+	boss = null
+	boss_defeated = false
+	stillheart_collected = false
+	stillheart_area = null
+	stillheart_visual = null
+	arena_gate_shape = null
+	arena_gate_visual = null
+	vent_visuals.clear()
+	active_custom_map_name = str(data.get("name", "Custom Hollow"))
+	active_custom_map_data = data.duplicate(true)
+	custom_map_active = true
+	level_world_width = float(int(data.get("width", 40)) * 24)
+	var spawn: Vector2 = CUSTOM_MAP_RUNTIME.build(self, level_root, data)
+	checkpoint_position = spawn
+	player.respawn_position = spawn
+	player.respawn(spawn)
+	player.visible = true
+	player.set_physics_process(true)
+	game_started = true
+	paused = false
+	completed = false
+	get_tree().paused = false
+	main_menu_panel.visible = false
+	pause_panel.visible = false
+	level_root.visible = true
+	health_label.visible = true
+	shard_label.visible = true
+	combat_label.visible = true
+	controls.visible = true
+	controls.set_process_input(true)
+	resume_button.visible = true
+	return_title_button.visible = true
+	return_to_editor_button.visible = false
+	_update_camera_limits()
+	_refresh_hud()
+	_update_music_playback()
+	_show_message("CUSTOM MAP: %s" % active_custom_map_name, 3.0)
 
 func _on_map_forge_closed() -> void:
     if is_instance_valid(map_forge_layer):
@@ -946,10 +861,38 @@ func _on_map_forge_closed() -> void:
     if not game_started:
         _show_main_menu()
 
+func _return_to_map_forge() -> void:
+	if not is_instance_valid(map_forge_layer) or map_forge_layer.get_child_count() == 0:
+		_show_message("MAP FORGE SESSION IS NO LONGER AVAILABLE", 2.0)
+		return
+	get_tree().paused = true
+	paused = false
+	game_started = false
+	custom_map_active = false
+	completed = false
+	if is_instance_valid(level_root):
+		level_root.visible = false
+	if is_instance_valid(player):
+		player.visible = false
+		player.set_physics_process(false)
+	controls.visible = false
+	controls.set_process_input(false)
+	health_label.visible = false
+	shard_label.visible = false
+	combat_label.visible = false
+	pause_panel.visible = false
+	main_menu_panel.visible = false
+	var editor := map_forge_layer.get_child(0) as Control
+	if editor != null and editor.has_method("return_from_test"):
+		editor.call("return_from_test")
+	map_forge_layer.visible = true
+
 func _start_game() -> void:
     game_started = true
     paused = false
     completed = false
+    custom_map_active = false
+    return_to_editor_button.visible = false
     get_tree().paused = false
     main_menu_panel.visible = false
     pause_panel.visible = false
@@ -964,29 +907,6 @@ func _start_game() -> void:
     resume_button.visible = true
     _update_music_playback()
     _show_message("THE FORGOTTEN HOLLOW  •  Find the teal shard, then reach the gate", 3.0)
-
-func _start_test_map() -> void:
-    game_started = true
-    paused = false
-    completed = false
-    get_tree().paused = false
-    main_menu_panel.visible = false
-    pause_panel.visible = false
-    level_root.visible = true
-    player.visible = true
-    player.set_physics_process(true)
-    health_label.visible = true
-    shard_label.visible = true
-    combat_label.visible = true
-    controls.visible = true
-    controls.set_process_input(true)
-    resume_button.visible = true
-    checkpoint_position = Vector2(150, 206)
-    _build_level(4)
-    player.respawn(checkpoint_position)
-    _refresh_hud()
-    _update_music_playback()
-    _show_message("TEST MAP — LUMINOUS CAVES  •  Explore the marked bridges and lower routes", 4.0)
 
 func _resume_game() -> void:
     if completed:
@@ -1004,6 +924,10 @@ func _return_to_main_menu() -> void:
     paused = false
     completed = false
     boss_defeated = false
+    custom_map_active = false
+    if is_instance_valid(map_forge_layer):
+        map_forge_layer.queue_free()
+    map_forge_layer = null
     checkpoint_position = Vector2(120, 418)
     player.respawn_position = checkpoint_position
     player.respawn(checkpoint_position)
@@ -1064,9 +988,14 @@ func _toggle_pause() -> void:
     if paused:
         pause_title.text = "PAUSED"
         resume_button.visible = true
+        return_to_editor_button.visible = custom_map_active
     _update_music_playback()
 
 func _restart_level() -> void:
+    if custom_map_active and not active_custom_map_data.is_empty():
+        get_tree().paused = false
+        _start_custom_map(active_custom_map_data)
+        return
     get_tree().paused = false
     get_tree().reload_current_scene()
 
@@ -1096,8 +1025,6 @@ func _refresh_hud() -> void:
             level_name = "THE PALE SPINE"
         elif current_level == 3:
             level_name = "THE HUSHVAULT"
-        elif current_level == 4:
-            level_name = "LUMINOUS CAVES TEST MAP"
         elif current_level == 99:
             level_name = active_custom_map_name.to_upper()
         shard_label.text = "LEVEL %d: %s  •  GATE SHARD %d/1\nASHEN SHARDS: %d CARRIED  •  %d BANKED" % [current_level, level_name, shards, AshenProfile.carried_embers, AshenProfile.banked_embers]
@@ -1202,10 +1129,11 @@ func _complete_game() -> void:
     pause_panel.visible = true
     controls.visible = false
     controls.set_process_input(false)
-    pause_title.text = "STAGE COMPLETE — THANKS FOR PLAYING"
+    pause_title.text = "CUSTOM LEVEL COMPLETE" if custom_map_active else "STAGE COMPLETE — THANKS FOR PLAYING"
     resume_button.visible = false
     return_title_button.visible = true
-    _show_message("THE STILLHEART RESTORED THE HUSHVAULT", 4.0)
+    return_to_editor_button.visible = custom_map_active
+    _show_message("CUSTOM LEVEL COMPLETE" if custom_map_active else "THE STILLHEART RESTORED THE HUSHVAULT", 4.0)
     _update_music_playback()
 
 func _on_hazard_entered(body: Node2D) -> void:
