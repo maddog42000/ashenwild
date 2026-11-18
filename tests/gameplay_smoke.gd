@@ -22,6 +22,18 @@ func _button_named(root_node: Node, expected_text: String) -> Button:
             return nested
     return null
 
+func _has_platform_at(main: Node, world_position: Vector2) -> bool:
+    for platform in get_nodes_in_group("platforms"):
+        if not is_instance_valid(platform):
+            continue
+        var platform_size: Vector2 = platform.get_meta("platform_size", Vector2.ZERO)
+        if platform_size == Vector2.ZERO:
+            continue
+        var platform_rect := Rect2(platform.global_position - platform_size * 0.5, platform_size)
+        if platform_rect.has_point(world_position):
+            return true
+    return false
+
 func _spawn_elite_projectile(main: Node, source: Node2D, kind: String, at: Vector2) -> Area2D:
     var shot := load("res://scenes/elite_projectile.tscn").instantiate() as Area2D
     var velocity := Vector2(-700.0 if source.global_position.x > at.x else 700.0, 0.0)
