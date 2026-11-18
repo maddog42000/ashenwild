@@ -26,7 +26,6 @@ The current game already contains:
 - Kettleback Bulwark and Gloam Cantor elite encounters.
 - Bow, Quickstring/Fanstring pickups, and directional shield guarding.
 - Checkpoints, collectible gate shards, fall hazards, Breathglass vents, and parkour routes.
-- Luminous Caves image-backed test map.
 - Touch joystick and independent jump, melee, bow, and shield controls.
 - Script-drawn fallback visuals where optional art is absent.
 
