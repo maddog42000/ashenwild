@@ -101,12 +101,8 @@ func _physics_process(delta: float) -> void:
         facing = 1 if player.global_position.x >= global_position.x else -1
         _update_facing_visuals()
 
-    if state == BossState.DORMANT or state == BossState.DEFEATED:
-        if state == BossState.DEFEATED and not defeat_signal_sent and state_timer <= 0.0:
-            defeat_signal_sent = true
-            defeated.emit()
-        else:
-            state_timer = maxf(0.0, state_timer - delta)
+    if state == BossState.DORMANT:
+        state_timer = maxf(0.0, state_timer - delta)
         return
 
     state_timer -= delta
