@@ -279,7 +279,7 @@ func _draw_object(center: Vector2, kind: String, radius: float) -> void:
 		"crystal":
 			draw_colored_polygon(PackedVector2Array([center + Vector2(0, -radius), center + Vector2(radius * 0.55, 0), center + Vector2(0, radius), center + Vector2(-radius * 0.55, 0)]), COLORS["CRYSTAL"])
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -293,15 +293,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			painting = true
-			_paint(event.position)
+			if canvas_rect.has_point(event.position):
+				painting = true
+				_paint(event.position)
 		else:
 			painting = false
 	elif event is InputEventMouseMotion and painting:
 		_paint(event.position)
-	elif event is InputEventScreenTouch and event.pressed:
-		_paint(event.position)
-	elif event is InputEventScreenDrag:
+	elif event is InputEventScreenTouch:
+		if event.pressed and canvas_rect.has_point(event.position):
+			painting = true
+			_paint(event.position)
+		elif not event.pressed:
+			painting = false
+	elif event is InputEventScreenDrag and painting:
 		_paint(event.position)
 
 func _paint(position: Vector2) -> void:
