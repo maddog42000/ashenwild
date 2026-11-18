@@ -832,6 +832,8 @@ func _start_custom_map(data: Dictionary) -> void:
 	arena_gate_shape = null
 	arena_gate_visual = null
 	vent_visuals.clear()
+	boss_label.visible = false
+	boss_bar.visible = false
 	active_custom_map_name = str(data.get("name", "Custom Hollow"))
 	active_custom_map_data = data.duplicate(true)
 	custom_map_active = true
