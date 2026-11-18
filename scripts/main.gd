@@ -812,58 +812,58 @@ func _open_map_forge() -> void:
 
 
 func _start_custom_map(data: Dictionary) -> void:
-	var validation_error: String = MapForgeData.validate_playable(data)
-	if not validation_error.is_empty():
-		_show_message("CUSTOM MAP INVALID — " + validation_error, 3.0)
-		return
-	if is_instance_valid(level_root):
-		level_root.queue_free()
-	level_root = Node2D.new()
-	level_root.name = "CustomMapRuntime"
-	add_child(level_root)
-	move_child(level_root, 0)
-	current_level = 99
-	shards = 0
-	boss = null
-	boss_defeated = false
-	stillheart_collected = false
-	stillheart_area = null
-	stillheart_visual = null
-	arena_gate_shape = null
-	arena_gate_visual = null
-	vent_visuals.clear()
-	boss_label.visible = false
-	boss_bar.visible = false
-	active_custom_map_name = str(data.get("name", "Custom Hollow"))
-	active_custom_map_data = data.duplicate(true)
-	custom_map_active = true
-	level_world_width = float(int(data.get("width", 40)) * 24)
-	level_world_height = float(int(data.get("height", 20)) * 24 + 120)
-	var spawn: Vector2 = CUSTOM_MAP_RUNTIME.build(self, level_root, data)
-	checkpoint_position = spawn
-	player.respawn_position = spawn
-	player.respawn(spawn)
-	player.visible = true
-	player.set_physics_process(true)
-	game_started = true
-	paused = false
-	completed = false
-	get_tree().paused = false
-	main_menu_panel.visible = false
-	pause_panel.visible = false
-	level_root.visible = true
-	health_label.visible = true
-	shard_label.visible = true
-	combat_label.visible = true
-	controls.visible = true
-	controls.set_process_input(true)
-	resume_button.visible = true
-	return_title_button.visible = true
-	return_to_editor_button.visible = false
-	_update_camera_limits()
-	_refresh_hud()
-	_update_music_playback()
-	_show_message("CUSTOM MAP: %s" % active_custom_map_name, 3.0)
+    var validation_error: String = MapForgeData.validate_playable(data)
+    if not validation_error.is_empty():
+        _show_message("CUSTOM MAP INVALID — " + validation_error, 3.0)
+        return
+    if is_instance_valid(level_root):
+        level_root.queue_free()
+    level_root = Node2D.new()
+    level_root.name = "CustomMapRuntime"
+    add_child(level_root)
+    move_child(level_root, 0)
+    current_level = 99
+    shards = 0
+    boss = null
+    boss_defeated = false
+    stillheart_collected = false
+    stillheart_area = null
+    stillheart_visual = null
+    arena_gate_shape = null
+    arena_gate_visual = null
+    vent_visuals.clear()
+    boss_label.visible = false
+    boss_bar.visible = false
+    active_custom_map_name = str(data.get("name", "Custom Hollow"))
+    active_custom_map_data = data.duplicate(true)
+    custom_map_active = true
+    level_world_width = float(int(data.get("width", 40)) * 24)
+    level_world_height = float(int(data.get("height", 20)) * 24 + 120)
+    var spawn: Vector2 = CUSTOM_MAP_RUNTIME.build(self, level_root, data)
+    checkpoint_position = spawn
+    player.respawn_position = spawn
+    player.respawn(spawn)
+    player.visible = true
+    player.set_physics_process(true)
+    game_started = true
+    paused = false
+    completed = false
+    get_tree().paused = false
+    main_menu_panel.visible = false
+    pause_panel.visible = false
+    level_root.visible = true
+    health_label.visible = true
+    shard_label.visible = true
+    combat_label.visible = true
+    controls.visible = true
+    controls.set_process_input(true)
+    resume_button.visible = true
+    return_title_button.visible = true
+    return_to_editor_button.visible = false
+    _update_camera_limits()
+    _refresh_hud()
+    _update_music_playback()
+    _show_message("CUSTOM MAP: %s" % active_custom_map_name, 3.0)
 
 func _on_map_forge_closed() -> void:
     if is_instance_valid(map_forge_layer):
@@ -873,30 +873,30 @@ func _on_map_forge_closed() -> void:
         _show_main_menu()
 
 func _return_to_map_forge() -> void:
-	if not is_instance_valid(map_forge_layer) or map_forge_layer.get_child_count() == 0:
-		_show_message("MAP FORGE SESSION IS NO LONGER AVAILABLE", 2.0)
-		return
-	get_tree().paused = true
-	paused = false
-	game_started = false
-	custom_map_active = false
-	completed = false
-	if is_instance_valid(level_root):
-		level_root.visible = false
-	if is_instance_valid(player):
-		player.visible = false
-		player.set_physics_process(false)
-	controls.visible = false
-	controls.set_process_input(false)
-	health_label.visible = false
-	shard_label.visible = false
-	combat_label.visible = false
-	pause_panel.visible = false
-	main_menu_panel.visible = false
-	var editor := map_forge_layer.get_child(0) as Control
-	if editor != null and editor.has_method("return_from_test"):
-		editor.call("return_from_test")
-	_update_music_playback()
+    if not is_instance_valid(map_forge_layer) or map_forge_layer.get_child_count() == 0:
+        _show_message("MAP FORGE SESSION IS NO LONGER AVAILABLE", 2.0)
+        return
+    get_tree().paused = true
+    paused = false
+    game_started = false
+    custom_map_active = false
+    completed = false
+    if is_instance_valid(level_root):
+        level_root.visible = false
+    if is_instance_valid(player):
+        player.visible = false
+        player.set_physics_process(false)
+    controls.visible = false
+    controls.set_process_input(false)
+    health_label.visible = false
+    shard_label.visible = false
+    combat_label.visible = false
+    pause_panel.visible = false
+    main_menu_panel.visible = false
+    var editor := map_forge_layer.get_child(0) as Control
+    if editor != null and editor.has_method("return_from_test"):
+        editor.call("return_from_test")
+    _update_music_playback()
 
 func _start_game() -> void:
     game_started = true
