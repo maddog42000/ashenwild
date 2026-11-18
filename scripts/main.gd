@@ -975,6 +975,8 @@ func _update_music_playback() -> void:
             music_player.stop()
 
 func _process(_delta: float) -> void:
+    if not game_started:
+        return
     _refresh_combat_hud()
     if Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("touch_pause"):
         _toggle_pause()
