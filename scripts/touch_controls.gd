@@ -35,8 +35,8 @@ func _input(event: InputEvent) -> void:
 func _press_finger(index: int, point: Vector2) -> void:
     if fingers.has(index):
         return
-    var ui_scale_factor := _ui_scale(get_viewport_rect().viewport_size)
-    var center: Vector2 = _positions(get_viewport_rect().viewport_size)["stick"]
+    var ui_scale_factor := _ui_scale(get_viewport_rect().size)
+    var center: Vector2 = _positions(get_viewport_rect().size)["stick"]
     if point.distance_to(center) <= STICK_TOUCH_RADIUS * ui_scale_factor:
         fingers[index] = {"kind": "stick", "action": ""}
         active_sticks[index] = center
@@ -68,7 +68,7 @@ func _drag_finger(index: int, point: Vector2) -> void:
     get_viewport().set_input_as_handled()
 
 func _update_stick(index: int, point: Vector2) -> void:
-    var viewport_size := get_viewport_rect().viewport_size
+    var viewport_size := get_viewport_rect().size
     var center: Vector2 = _positions(viewport_size)["stick"]
     var ui_scale_factor := _ui_scale(viewport_size)
     var offset := point - center
@@ -135,7 +135,7 @@ func _positions(viewport_size: Vector2) -> Dictionary:
     }
 
 func _action_at(point: Vector2) -> String:
-    var viewport_size := get_viewport_rect().viewport_size
+    var viewport_size := get_viewport_rect().size
     var ui_scale_factor := _ui_scale(viewport_size)
     var buttons := _positions(viewport_size)
     for action in ["jump", "attack", "bow_fire", "shield", "restart", "touch_pause"]:
@@ -154,13 +154,13 @@ func _hit_radius(action: String) -> float:
     return 0.0
 
 func _draw() -> void:
-    var viewport_size := get_viewport_rect().viewport_size
+    var viewport_size := get_viewport_rect().size
     var ui_scale_factor := _ui_scale(viewport_size)
     var positions := _positions(viewport_size)
     var center: Vector2 = positions["stick"]
     var knob_position := center
     if not active_sticks.is_empty():
-        knob_position = active_sticks.values()[active_sticks.viewport_size() - 1]
+        knob_position = active_sticks.values()[active_sticks.size() - 1]
     var stick_fill := Color(0.39, 0.66, 0.60, 0.22)
     var stick_edge := Color(0.86, 0.96, 0.88, 0.60)
     draw_circle(center, STICK_OUTER_RADIUS * ui_scale_factor, stick_fill)
@@ -188,6 +188,6 @@ func _draw_button(center: Vector2, label: String, active: bool, radius: float) -
     draw_circle(center, radius, fill)
     draw_arc(center, radius, 0.0, TAU, 48, edge, 3.0)
     var font := ThemeDB.fallback_font
-    var font_size := maxi(16, int(19.0 * _ui_scale(get_viewport_rect().viewport_size)))
+    var font_size := maxi(16, int(19.0 * _ui_scale(get_viewport_rect().size)))
     var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
     draw_string(font, center + Vector2(-width / 2.0, 7.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
