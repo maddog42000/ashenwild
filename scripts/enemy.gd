@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+signal defeated(at: Vector2)
+
 const SPEED := 78.0
 const GRAVITY := 1250.0
 const MAX_HEALTH := 2
@@ -98,6 +100,7 @@ func take_damage(amount: int, hit_direction: int) -> void:
     modulate = Color(1.0, 0.62, 0.48)
     if health <= 0:
         dead = true
+        defeated.emit(global_position)
         var sprite := get_node_or_null("Sprite")
         if sprite:
             sprite.visible = false
