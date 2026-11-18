@@ -108,7 +108,7 @@ func _run() -> void:
         {"type": "hazard", "x": 25, "y": 14},
         {"type": "exit", "x": 29, "y": 14}
     ]
-    if not MapForgeData.validate_playable(draft).is_empty() == false:
+    if not MapForgeData.validate_playable(draft).is_empty():
         _fail("Map Forge rejected a valid test layout")
         return
     var saved_map: Dictionary = MapForgeData.save_map(draft)
@@ -128,13 +128,18 @@ func _run() -> void:
         _fail("Map Forge could not delete a duplicate")
         return
     forge.set("data", saved_data)
-    forge.set("name_field.text", "Map Forge Smoke")
+    var forge_name_field: LineEdit = forge.get("name_field")
+    forge_name_field.text = "Map Forge Smoke"
     forge.call("_test_map")
     await physics_frame
     if main.current_level != 99 or not main.game_started or not main.custom_map_active:
         _fail("Map Forge Test Map did not enter the real custom gameplay runtime")
         return
-    if main.level_root.get_nodes_in_group("platforms").size() < 1 or get_nodes_in_group("enemies").is_empty():
+    var custom_platform_count := 0
+    for level_child in main.level_root.get_children():
+        if level_child.is_in_group("platforms"):
+            custom_platform_count += 1
+    if custom_platform_count < 1 or get_nodes_in_group("enemies").is_empty():
         _fail("Custom map runtime did not build collision terrain and enemy instances")
         return
     main._return_to_map_forge()
