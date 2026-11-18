@@ -15,7 +15,7 @@ static func build(host: Node, level_root: Node2D, data: Dictionary) -> Vector2:
 	var spawn_data: Dictionary = data.get("spawn", {"x": 2, "y": height - 4})
 	var spawn_x: int = clampi(int(spawn_data.get("x", 2)), 0, width - 1)
 	var spawn_y: int = clampi(int(spawn_data.get("y", height - 4)), 0, height - 2)
-	var spawn := Vector2(float(spawn_x) * TILE_SIZE + TILE_SIZE * 0.5, float(spawn_y + 1) * TILE_SIZE - 22.0)
+	var spawn := Vector2(float(spawn_x) * TILE_SIZE + TILE_SIZE * 0.5, float(spawn_y + 1) * TILE_SIZE - 23.0)
 	return spawn
 
 static func _add_world_bounds(host: Node, level_root: Node2D, world_width: float, world_height: float) -> void:
