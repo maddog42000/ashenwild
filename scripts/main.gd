@@ -1160,7 +1160,7 @@ func _on_exit_entered(body: Node2D) -> void:
     if current_level == 3 and not stillheart_collected:
         _show_message("CLAIM THE STILLHEART FROM THE BELL-KEEPER", 2.0)
         return
-    if shards < 1:
+    if current_level != 99 and shards < 1:
         _show_message("The sealed gate needs this level's shard", 2.0)
         return
     if current_level == 1:
