@@ -50,7 +50,7 @@ func _physics_process(delta: float) -> void:
     position += travel_velocity * delta
     lifetime -= delta
     if attack_kind == "pulse" and is_instance_valid(effect_sprite):
-        var frame_step := int(Time.get_ticks_msec() / 100) % 4
+        var frame_step := int(Time.get_ticks_msec() / 100.0) % 4
         effect_sprite.frame = frame_step
     if lifetime <= 0.0 or position.x < 0.0 or position.x > 3000.0 or position.y > 620.0:
         queue_free()
