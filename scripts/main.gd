@@ -9,6 +9,7 @@ const GLOAM_CANTOR_SCENE := preload("res://scenes/gloam_cantor.tscn")
 const MENU_MUSIC_PATH := "res://assets/audio/ashenwild_menu_theme.ogg"
 const GAME_MUSIC_PATH := "res://assets/audio/ashenwild_gameplay_theme.mp3"
 const TEST_MAP_PATH := "res://assets/backgrounds/luminous_caves_test.jpg"
+const MAP_FORGE_SCENE := preload("res://scenes/map_forge.tscn")
 
 var player: CharacterBody2D
 var camera: Camera2D
@@ -47,6 +48,8 @@ var music_toggle_buttons: Array[CheckButton] = []
 var cheat_toggle_buttons: Array[CheckButton] = []
 var cheat_options := {"invulnerable": false, "infinite_jumps": false, "speed_boost": false}
 var menu_music_enabled := true
+var map_forge_layer: CanvasLayer
+var active_custom_map_name := ""
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -736,6 +739,7 @@ func _build_hud() -> void:
     menu_stack.add_child(subtitle)
     menu_stack.add_child(_make_menu_button("BEGIN JOURNEY", _start_game))
     menu_stack.add_child(_make_menu_button("TEST MAP — LUMINOUS CAVES", _start_test_map))
+    menu_stack.add_child(_make_menu_button("MAP FORGE — CREATE YOUR OWN", _open_map_forge))
     var cheat_heading := _make_heading("OPTIONAL CHEATS", 16)
     cheat_heading.add_theme_color_override("font_color", Color(0.94, 0.70, 0.42))
     menu_stack.add_child(cheat_heading)
@@ -838,6 +842,109 @@ func _show_main_menu() -> void:
     pause_panel.visible = false
     main_menu_panel.visible = true
     _update_music_playback()
+
+
+func _open_map_forge() -> void:
+    if is_instance_valid(map_forge_layer):
+        return
+    map_forge_layer = CanvasLayer.new()
+    map_forge_layer.layer = 20
+    map_forge_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+    add_child(map_forge_layer)
+    var editor := MAP_FORGE_SCENE.instantiate() as Control
+    editor.process_mode = Node.PROCESS_MODE_ALWAYS
+    editor.closed.connect(_on_map_forge_closed)
+    editor.map_test_requested.connect(_start_custom_map)
+    map_forge_layer.add_child(editor)
+
+
+func _start_custom_map(data: Dictionary) -> void:
+    var map_cells: Array = data.get("cells", [])
+    var map_width := int(data.get("width", 0))
+    var map_height := int(data.get("height", 0))
+    if map_width < 8 or map_width > 100 or map_height < 8 or map_height > 60 or map_cells.size() != map_height:
+        _show_message("CUSTOM MAP INVALID — CHECK GRID SIZE", 3.0)
+        return
+    for row in map_cells:
+        if not row is Array or row.size() != map_width:
+            _show_message("CUSTOM MAP INVALID — GRID DATA", 3.0)
+            return
+    _build_level(99)
+    for child in level_root.get_children():
+        level_root.remove_child(child)
+        child.queue_free()
+    current_level = 99
+    active_custom_map_name = str(data.get("name", "Custom Hollow"))
+    level_world_width = float(map_width * 24)
+    var solids := [1, 2]
+    for y in range(map_height):
+        var x := 0
+        while x < map_width:
+            var tile_id := int(map_cells[y][x])
+            if tile_id in solids:
+                var run_start := x
+                while x < map_width and int(map_cells[y][x]) == tile_id:
+                    x += 1
+                var run_width := x - run_start
+                var tint := Color(0.29, 0.34, 0.35) if tile_id == 1 else Color(0.25, 0.48, 0.37)
+                _platform(Vector2((run_start + run_width * 0.5) * 24.0, (y + 0.5) * 24.0), Vector2(run_width * 24.0, 24.0), tint)
+            else:
+                x += 1
+    var spawn := Vector2(60, float(map_height - 3) * 24.0)
+    var exit_count := 0
+    for y in range(map_height):
+        for x in range(map_width):
+            var tile_id := int(map_cells[y][x])
+            var at := Vector2((x + 0.5) * 24.0, (y + 0.5) * 24.0)
+            if tile_id == 3:
+                _make_hazard(at + Vector2(0, 24), Vector2(24, 18))
+            elif tile_id == 4:
+                _make_enemy(at + Vector2(0, 8))
+            elif tile_id == 5:
+                _make_collectible(at)
+            elif tile_id == 6:
+                _make_checkpoint(at + Vector2(0, 12))
+            elif tile_id == 7:
+                _make_exit(at + Vector2(0, 12))
+                exit_count += 1
+            elif tile_id == 8:
+                var crystal := Polygon2D.new()
+                crystal.position = at
+                crystal.polygon = PackedVector2Array([Vector2(0, -10), Vector2(7, 0), Vector2(0, 10), Vector2(-7, 0)])
+                crystal.color = Color(0.35, 0.62, 0.98)
+                level_root.add_child(crystal)
+    player.respawn_position = spawn
+    checkpoint_position = spawn
+    player.respawn(spawn)
+    player.visible = true
+    player.set_physics_process(true)
+    game_started = true
+    paused = false
+    completed = false
+    get_tree().paused = false
+    main_menu_panel.visible = false
+    pause_panel.visible = false
+    level_root.visible = true
+    health_label.visible = true
+    shard_label.visible = true
+    combat_label.visible = true
+    controls.visible = true
+    controls.set_process_input(true)
+    resume_button.visible = true
+    _update_camera_limits()
+    _refresh_hud()
+    _update_music_playback()
+    var note := "CUSTOM MAP: %s" % active_custom_map_name
+    if exit_count == 0:
+        note += "  •  Add an EXIT tile to finish"
+    _show_message(note, 4.0)
+
+func _on_map_forge_closed() -> void:
+    if is_instance_valid(map_forge_layer):
+        map_forge_layer.queue_free()
+    map_forge_layer = null
+    if not game_started:
+        _show_main_menu()
 
 func _start_game() -> void:
     game_started = true
@@ -991,6 +1098,8 @@ func _refresh_hud() -> void:
             level_name = "THE HUSHVAULT"
         elif current_level == 4:
             level_name = "LUMINOUS CAVES TEST MAP"
+        elif current_level == 99:
+            level_name = active_custom_map_name.to_upper()
         shard_label.text = "LEVEL %d: %s  •  GATE SHARD %d/1\nASHEN SHARDS: %d CARRIED  •  %d BANKED" % [current_level, level_name, shards, AshenProfile.carried_embers, AshenProfile.banked_embers]
 
 func _show_message(text: String, seconds: float) -> void:
@@ -1051,7 +1160,7 @@ func _on_exit_entered(body: Node2D) -> void:
     if current_level == 3 and not stillheart_collected:
         _show_message("CLAIM THE STILLHEART FROM THE BELL-KEEPER", 2.0)
         return
-    if shards < 1:
+    if current_level != 99 and shards < 1:
         _show_message("The sealed gate needs this level's shard", 2.0)
         return
     if current_level == 1:
