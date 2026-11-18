@@ -891,6 +891,8 @@ func _start_game() -> void:
     game_started = true
     paused = false
     completed = false
+    custom_map_active = false
+    return_to_editor_button.visible = false
     get_tree().paused = false
     main_menu_panel.visible = false
     pause_panel.visible = false
@@ -1127,11 +1129,11 @@ func _complete_game() -> void:
     pause_panel.visible = true
     controls.visible = false
     controls.set_process_input(false)
-    pause_title.text = "STAGE COMPLETE — THANKS FOR PLAYING"
+    pause_title.text = "CUSTOM LEVEL COMPLETE" if custom_map_active else "STAGE COMPLETE — THANKS FOR PLAYING"
     resume_button.visible = false
     return_title_button.visible = true
     return_to_editor_button.visible = custom_map_active
-    _show_message("THE STILLHEART RESTORED THE HUSHVAULT", 4.0)
+    _show_message("CUSTOM LEVEL COMPLETE" if custom_map_active else "THE STILLHEART RESTORED THE HUSHVAULT", 4.0)
     _update_music_playback()
 
 func _on_hazard_entered(body: Node2D) -> void:
