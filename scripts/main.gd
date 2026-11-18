@@ -47,7 +47,7 @@ var music_player: AudioStreamPlayer
 var game_music_player: AudioStreamPlayer
 var music_toggle_buttons: Array[CheckButton] = []
 var cheat_toggle_buttons: Array[CheckButton] = []
-var cheat_options := {"invulnerable": false, "infinite_jumps": false, "speed_boost": false}
+var cheat_options := {"invulnerable": false, "infinite_jumps": false, "speed_boost": false, "one_hit_kill": false, "unlimited_guard": false}
 var menu_music_enabled := true
 var map_forge_layer: CanvasLayer
 var active_custom_map_name := ""
@@ -62,11 +62,12 @@ func _ready() -> void:
     _build_hud()
     _build_level(1)
     player = PLAYER_SCENE.instantiate()
-    player.position = Vector2(120, 418)
+    checkpoint_position = _surface_spawn_position(Vector2(120, 418), 22.0)
+    player.position = checkpoint_position
+    player.respawn_position = checkpoint_position
     add_child(player)
     player.health_changed.connect(_on_health_changed)
     player.died.connect(_on_player_died)
-    player.fall_damage_taken.connect(_on_fall_damage_taken)
     player.enemy_stomped.connect(_on_enemy_stomped)
     player.arrow_shot_requested.connect(_on_arrow_shot_requested)
     player.bow_state_changed.connect(_refresh_combat_hud)
@@ -738,6 +739,8 @@ func _make_cheat_toggles() -> VBoxContainer:
     _add_cheat_toggle(stack, "Invulnerable", "invulnerable")
     _add_cheat_toggle(stack, "Unlimited air jumps", "infinite_jumps")
     _add_cheat_toggle(stack, "High-speed mode", "speed_boost")
+    _add_cheat_toggle(stack, "One-hit kills", "one_hit_kill")
+    _add_cheat_toggle(stack, "Unlimited guard", "unlimited_guard")
     return stack
 
 func _add_cheat_toggle(parent: VBoxContainer, label: String, cheat_key: String) -> void:
@@ -939,10 +942,10 @@ func _return_to_main_menu() -> void:
     if is_instance_valid(map_forge_layer):
         map_forge_layer.queue_free()
     map_forge_layer = null
-    checkpoint_position = Vector2(120, 418)
+    _build_level(1)
+    checkpoint_position = _surface_spawn_position(Vector2(120, 418), 22.0)
     player.respawn_position = checkpoint_position
     player.respawn(checkpoint_position)
-    _build_level(1)
     _refresh_hud()
     _show_main_menu()
 
@@ -951,7 +954,7 @@ func _on_cheat_toggled(enabled: bool, cheat_key: String) -> void:
     player.set("cheat_" + cheat_key, enabled)
     for toggle in cheat_toggle_buttons:
         if is_instance_valid(toggle):
-            var matches := (cheat_key == "invulnerable" and toggle.text == "Invulnerable") or (cheat_key == "infinite_jumps" and toggle.text == "Unlimited air jumps") or (cheat_key == "speed_boost" and toggle.text == "High-speed mode")
+            var matches := (cheat_key == "invulnerable" and toggle.text == "Invulnerable") or (cheat_key == "infinite_jumps" and toggle.text == "Unlimited air jumps") or (cheat_key == "speed_boost" and toggle.text == "High-speed mode") or (cheat_key == "one_hit_kill" and toggle.text == "One-hit kills") or (cheat_key == "unlimited_guard" and toggle.text == "Unlimited guard")
             if matches:
                 toggle.set_pressed_no_signal(enabled)
 
@@ -1054,7 +1057,7 @@ func _show_message(text: String, seconds: float) -> void:
 func _on_checkpoint_entered(body: Node2D, at: Vector2) -> void:
     if body != player:
         return
-    checkpoint_position = at
+    checkpoint_position = _surface_spawn_position(at, 22.0)
     player.respawn_position = checkpoint_position
     player.restore_shield()
     var banked_amount: int = AshenProfile.bank_carried()
@@ -1114,10 +1117,10 @@ func _start_level_two() -> void:
     get_tree().paused = false
     paused = false
     completed = false
-    checkpoint_position = Vector2(120, 418)
-    player.respawn_position = checkpoint_position
     AshenProfile.record_region_clear()
     _build_level(2)
+    checkpoint_position = _surface_spawn_position(Vector2(120, 418), 22.0)
+    player.respawn_position = checkpoint_position
     player.respawn(checkpoint_position)
     _refresh_hud()
     _show_message("LEVEL 2: THE PALE SPINE  •  A harder crossing lies ahead", 3.0)
@@ -1126,10 +1129,10 @@ func _start_level_three() -> void:
     get_tree().paused = false
     paused = false
     completed = false
-    checkpoint_position = Vector2(120, 418)
-    player.respawn_position = checkpoint_position
     AshenProfile.record_region_clear()
     _build_level(3)
+    checkpoint_position = _surface_spawn_position(Vector2(120, 418), 22.0)
+    player.respawn_position = checkpoint_position
     player.respawn(checkpoint_position)
     _refresh_hud()
     _show_message("REGION 3: THE HUSHVAULT  •  Reach the bell-foundry and face its keeper", 3.0)
@@ -1156,10 +1159,6 @@ func _on_hazard_entered(body: Node2D) -> void:
 func _on_vent_entered(body: Node2D) -> void:
     if body == player:
         player.breathglass_burst()
-
-func _on_fall_damage_taken(amount: int) -> void:
-    var heart_text := "HEART" if amount == 1 else "HEARTS"
-    _show_message("HARD LANDING — %d %s LOST" % [amount, heart_text], 2.0)
 
 func _on_enemy_stomped() -> void:
     _show_message("ASH MITE STOMP!", 1.0)
@@ -1205,7 +1204,8 @@ func _on_boss_defeated() -> void:
     if is_instance_valid(arena_gate_visual):
         arena_gate_visual.visible = false
     if is_instance_valid(boss) and not is_instance_valid(stillheart_area):
-        _make_stillheart(boss.global_position)
+        var reward_position := _surface_spawn_position(boss.global_position, 22.0)
+        _make_stillheart(reward_position)
     _show_message("THE BELLOWS SAINT FALLS — CLAIM THE STILLHEART", 3.0)
 
 func _on_player_died() -> void:
