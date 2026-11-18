@@ -830,7 +830,7 @@ func _start_custom_map(data: Dictionary) -> void:
 	active_custom_map_data = data.duplicate(true)
 	custom_map_active = true
 	level_world_width = float(int(data.get("width", 40)) * 24)
-	level_world_height = float(int(data.get("height", 20)) * 24)
+	level_world_height = float(int(data.get("height", 20)) * 24 + 120)
 	var spawn: Vector2 = CUSTOM_MAP_RUNTIME.build(self, level_root, data)
 	checkpoint_position = spawn
 	player.respawn_position = spawn
