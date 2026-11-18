@@ -5,7 +5,7 @@ Map Forge is an offline, touch-friendly tile editor opened from the ASHENWILD ti
 
 ## Included in this pass
 - Title-menu entry: **MAP FORGE — CREATE YOUR OWN**.
-- 30 × 17 grid with 24 px cells.
+- 30 × 18 grid with 24 px cells.
 - Tap/click palette selection and paint placement, including drag painting.
 - Procedural tile palette: erase, stone, moss platform, hazard, Ash Mite marker, Ashen Shard, checkpoint, exit, crystal.
 - Undo/redo history.
