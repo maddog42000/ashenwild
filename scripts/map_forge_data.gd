@@ -69,14 +69,16 @@ static func validate(data: Dictionary) -> String:
 	var sy: int = int(spawn_value.get("y", -1))
 	if sx < 0 or sx >= width or sy < 0 or sy >= height:
 		return "Player spawn is outside the map."
-	var has_exit := false
-	for item in objects_value:
-		if str(item.get("type", "")) == "exit":
-			has_exit = true
-			break
-	if not has_exit:
-		return "Place at least one exit before testing."
 	return ""
+
+static func validate_playable(data: Dictionary) -> String:
+	var error_text: String = validate(data)
+	if not error_text.is_empty():
+		return error_text
+	for item in data.get("objects", []):
+		if str(item.get("type", "")) == "exit":
+			return ""
+	return "Place at least one exit before testing."
 
 static func normalize(data: Dictionary) -> Dictionary:
 	var result: Dictionary = data.duplicate(true)
@@ -150,7 +152,7 @@ static func save_map(data: Dictionary) -> Dictionary:
 	return {"ok": true, "data": normalized, "path": path}
 
 static func load_map(map_id: String) -> Dictionary:
-	if map_id.is_empty() or not map_id.validate_filename() == map_id:
+	if map_id.is_empty() or map_id.validate_filename() != map_id:
 		return {"ok": false, "error": "Invalid map identifier."}
 	var path: String = MAP_DIR.path_join(map_id + ".json")
 	if not FileAccess.file_exists(path):
@@ -168,7 +170,7 @@ static func load_map(map_id: String) -> Dictionary:
 	return {"ok": true, "data": normalized}
 
 static func delete_map(map_id: String) -> bool:
-	if map_id.is_empty() or not map_id.validate_filename() == map_id:
+	if map_id.is_empty() or map_id.validate_filename() != map_id:
 		return false
 	var path: String = MAP_DIR.path_join(map_id + ".json")
 	return DirAccess.remove_absolute(ProjectSettings.globalize_path(path)) == OK
