@@ -90,8 +90,8 @@ func _make_visual() -> void:
         if texture:
             var frames := SpriteFrames.new()
             frames.remove_animation("default")
-            var frame_width := texture.get_width() / 4
-            var frame_height := texture.get_height() / 2
+            var frame_width := texture.get_width() / 4.0
+            var frame_height := texture.get_height() / 2.0
             var specs := {"idle": [Vector2i(0, 0)], "walk": [Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)], "jump": [Vector2i(0, 1)], "fall": [Vector2i(1, 1)], "attack": [Vector2i(2, 1)], "hurt": [Vector2i(3, 1)]}
             for animation in specs:
                 frames.add_animation(animation)
