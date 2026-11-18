@@ -2,7 +2,6 @@ extends CharacterBody2D
 
 signal health_changed(current: int, maximum: int)
 signal died
-signal fall_damage_taken(amount: int)
 signal enemy_stomped
 signal arrow_shot_requested(origin: Vector2, direction: int, spread_angle: float, shooter_rid: RID)
 signal bow_state_changed
@@ -22,7 +21,6 @@ const BASE_GRAVITY := 950.0
 const GRAVITY_PER_MISSING_HEART := 350.0
 const BASE_FALL_CAP := 700.0
 const FALL_CAP_PER_MISSING_HEART := 160.0
-const FALL_DAMAGE_THRESHOLD := 650.0
 const MAX_HEALTH := 3
 const FULL_HEALTH_BODY_SCALE := Vector2(0.27, 0.22)
 const BASE_COLLIDER_RADIUS := 15.0
@@ -43,6 +41,8 @@ var dead := false
 var cheat_invulnerable := false
 var cheat_infinite_jumps := false
 var cheat_speed_boost := false
+var cheat_one_hit_kill := false
+var cheat_unlimited_guard := false
 var attack_ready_at := 0
 var vent_ready_at := 0
 var bow_ready_at := 0
@@ -58,7 +58,7 @@ var jump_buffer_time_left := 0.0
 
 func _ready() -> void:
     collision_layer = 1
-    collision_mask = 1
+    collision_mask = 3
     body_shape = CapsuleShape2D.new()
     body_shape.radius = BASE_COLLIDER_RADIUS
     body_shape.height = BASE_COLLIDER_HEIGHT
@@ -189,7 +189,7 @@ func get_combat_status_text() -> String:
     if is_instance_valid(spread_bow_timer) and not spread_bow_timer.is_stopped():
         effects.append("FAN %ds" % ceili(spread_bow_timer.time_left))
     var effect_text := " · ".join(effects) if not effects.is_empty() else "BOW NORMAL"
-    var guard_text := "GUARD %d/%d" % [shield_durability, MAX_SHIELD_DURABILITY]
+    var guard_text := "GUARD ∞" if cheat_unlimited_guard else "GUARD %d/%d" % [shield_durability, MAX_SHIELD_DURABILITY]
     if Input.is_action_pressed("shield") and shield_durability > 0:
         guard_text += " ACTIVE"
     return "%s  ·  %s" % [effect_text, guard_text]
@@ -212,12 +212,13 @@ func restore_shield() -> void:
     queue_redraw()
 
 func try_block_projectile(source_x: float, source_enemy: Node2D = null) -> bool:
-    if dead or shield_durability <= 0 or not Input.is_action_pressed("shield"):
+    if dead or (shield_durability <= 0 and not cheat_unlimited_guard) or not Input.is_action_pressed("shield"):
         return false
     var incoming_side := 1 if source_x > global_position.x else -1
     if incoming_side != facing:
         return false
-    shield_durability -= 1
+    if not cheat_unlimited_guard:
+        shield_durability -= 1
     shield_state_changed.emit(shield_durability, MAX_SHIELD_DURABILITY)
     queue_redraw()
     if is_instance_valid(source_enemy) and source_enemy.has_method("on_projectile_guarded"):
@@ -266,9 +267,7 @@ func _physics_process(delta: float) -> void:
 
     var fall_speed_before_landing := velocity.y
     move_and_slide()
-    var stomped_enemy := _check_enemy_contacts(fall_speed_before_landing)
-    if not stomped_enemy and not was_on_floor and is_on_floor() and fall_speed_before_landing >= FALL_DAMAGE_THRESHOLD:
-        _apply_fall_damage(fall_speed_before_landing)
+    _check_enemy_contacts(fall_speed_before_landing)
     _update_animation(direction)
     queue_redraw()
     if global_position.y > 700.0:
@@ -294,15 +293,6 @@ func _check_enemy_contacts(fall_speed_before_landing: float) -> bool:
             else:
                 collider.apply_contact_damage(self)
     return stomped_enemy
-
-func _apply_fall_damage(impact_speed: float) -> void:
-    if invulnerable or dead:
-        return
-    var damage := mini(2, 1 + int((impact_speed - FALL_DAMAGE_THRESHOLD) / 180.0))
-    var previous_health := health
-    take_damage(damage, global_position.x, false)
-    if health < previous_health:
-        fall_damage_taken.emit(previous_health - health)
 
 func _update_animation(direction: float) -> void:
     if not is_instance_valid(player_sprite) or attacking or dead:
@@ -362,7 +352,7 @@ func _die() -> void:
     died.emit()
 
 func _draw() -> void:
-    if not InputMap.has_action("shield") or not Input.is_action_pressed("shield") or shield_durability <= 0 or dead:
+    if not InputMap.has_action("shield") or not Input.is_action_pressed("shield") or (shield_durability <= 0 and not cheat_unlimited_guard) or dead:
         return
     var center := Vector2(float(facing) * 8.0, -3.0)
     var start_angle := -PI * 0.5 if facing > 0 else PI * 0.5
