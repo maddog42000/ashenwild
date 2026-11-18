@@ -190,7 +190,7 @@ func get_combat_status_text() -> String:
         effects.append("FAN %ds" % ceili(spread_bow_timer.time_left))
     var effect_text := " · ".join(effects) if not effects.is_empty() else "BOW NORMAL"
     var guard_text := "GUARD ∞" if cheat_unlimited_guard else "GUARD %d/%d" % [shield_durability, MAX_SHIELD_DURABILITY]
-    if Input.is_action_pressed("shield") and shield_durability > 0:
+    if Input.is_action_pressed("shield") and (shield_durability > 0 or cheat_unlimited_guard):
         guard_text += " ACTIVE"
     return "%s  ·  %s" % [effect_text, guard_text]
 
