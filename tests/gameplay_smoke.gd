@@ -7,12 +7,6 @@ func _fail(message: String) -> void:
     push_error(message)
     quit(1)
 
-func _has_platform_at(main: Node, expected: Vector2) -> bool:
-    for child in main.level_root.get_children():
-        if child is Node2D and child.is_in_group("platforms") and child.position.distance_to(expected) < 1.0:
-            return true
-    return false
-
 func _enemy_named(expected_name: String) -> Node:
     for enemy in get_nodes_in_group("enemies"):
         if enemy.name == expected_name:
@@ -27,6 +21,18 @@ func _button_named(root_node: Node, expected_text: String) -> Button:
         if is_instance_valid(nested):
             return nested
     return null
+
+func _has_platform_at(main: Node, world_position: Vector2) -> bool:
+    for platform in get_nodes_in_group("platforms"):
+        if not is_instance_valid(platform):
+            continue
+        var platform_size: Vector2 = platform.get_meta("platform_size", Vector2.ZERO)
+        if platform_size == Vector2.ZERO:
+            continue
+        var platform_rect := Rect2(platform.global_position - platform_size * 0.5, platform_size)
+        if platform_rect.has_point(world_position):
+            return true
+    return false
 
 func _spawn_elite_projectile(main: Node, source: Node2D, kind: String, at: Vector2) -> Area2D:
     var shot := load("res://scenes/elite_projectile.tscn").instantiate() as Area2D
@@ -52,8 +58,11 @@ func _run() -> void:
     if main.game_music_player.stream == null or not (main.game_music_player.stream is AudioStreamMP3) or not (main.game_music_player.stream as AudioStreamMP3).loop:
         _fail("User-provided gameplay MP3 did not load as a looping game stream")
         return
-    if not is_instance_valid(_button_named(main.main_menu_panel, "TEST MAP — LUMINOUS CAVES")):
-        _fail("Main menu did not expose the Luminous Caves test map")
+    if not is_instance_valid(_button_named(main.main_menu_panel, "MAP FORGE — CREATE YOUR OWN")):
+        _fail("Main menu did not expose Map Forge")
+        return
+    if is_instance_valid(_button_named(main.main_menu_panel, "TEST MAP — LUMINOUS CAVES")):
+        _fail("Removed experimental map is still exposed in the title menu")
         return
     if int(ProjectSettings.get_setting("display/window/handheld/orientation")) != 4:
         _fail("Mobile orientation is not sensor landscape")
@@ -87,16 +96,87 @@ func _run() -> void:
     if not main.game_music_player.playing or main.music_player.playing:
         _fail("Starting the game did not switch from menu music to the supplied gameplay track")
         return
-    main._start_test_map()
+    main._return_to_main_menu()
+    var generator_styles := ["Basic Platforming", "Ruined Castle", "Underground Caves", "Forest Ruins", "Challenge Course"]
+    for generator_style in generator_styles:
+        var generated: Dictionary = MapForgeData.generate("Seeded Test", 32, 18, generator_style, 424242)
+        var generated_again: Dictionary = MapForgeData.generate("Seeded Test", 32, 18, generator_style, 424242)
+        if not MapForgeData.validate_playable(generated).is_empty():
+            _fail("Generator produced an invalid or unplayable %s map" % generator_style)
+            return
+        if JSON.stringify(generated["tiles"]) != JSON.stringify(generated_again["tiles"]) or JSON.stringify(generated["objects"]) != JSON.stringify(generated_again["objects"]):
+            _fail("Generator seed did not reproduce the %s layout" % generator_style)
+            return
+    main._open_map_forge()
+    await process_frame
+    if not is_instance_valid(main.map_forge_layer) or main.map_forge_layer.get_child_count() == 0:
+        _fail("Map Forge did not open from the title menu")
+        return
+    var forge: Control = main.map_forge_layer.get_child(0) as Control
+    var draft: Dictionary = MapForgeData.make_new("Map Forge Smoke", 32, 18)
+    for x in range(32):
+        draft["tiles"][15][x] = 1
+        draft["tiles"][16][x] = 1
+    draft["spawn"] = {"x": 2, "y": 14}
+    draft["objects"] = [
+        {"type": "shard", "x": 7, "y": 14},
+        {"type": "checkpoint", "x": 12, "y": 14},
+        {"type": "enemy", "x": 20, "y": 14},
+        {"type": "hazard", "x": 25, "y": 14},
+        {"type": "exit", "x": 29, "y": 14}
+    ]
+    if not MapForgeData.validate_playable(draft).is_empty():
+        _fail("Map Forge rejected a valid test layout")
+        return
+    var saved_map: Dictionary = MapForgeData.save_map(draft)
+    if not saved_map.get("ok", false):
+        _fail("Map Forge could not persist a map")
+        return
+    var saved_data: Dictionary = saved_map["data"]
+    var loaded_map: Dictionary = MapForgeData.load_map(str(saved_data["id"]))
+    if not loaded_map.get("ok", false) or str(loaded_map["data"]["name"]) != "Map Forge Smoke":
+        _fail("Map Forge could not reload a saved map")
+        return
+    var duplicated_map: Dictionary = MapForgeData.duplicate_map(saved_data, "Map Forge Smoke Copy")
+    if not duplicated_map.get("ok", false):
+        _fail("Map Forge could not duplicate a saved map")
+        return
+    if not MapForgeData.delete_map(str(duplicated_map["data"]["id"])):
+        _fail("Map Forge could not delete a duplicate")
+        return
+    forge.set("data", saved_data)
+    forge.call("_sync_fields")
+    var forge_name_field: LineEdit = forge.get("name_field")
+    forge_name_field.text = "Map Forge Smoke"
+    var editor_canvas: Rect2 = forge.get("canvas_rect")
+    var editor_cell_size: float = forge.get("cell_size")
+    var editor_origin: Vector2 = editor_canvas.position + (editor_canvas.size - Vector2(32, 18) * editor_cell_size) * 0.5
+    forge.call("_choose_kind", "MOSS")
+    forge.call("_paint", editor_origin + Vector2(5.5, 10.5) * editor_cell_size)
+    var painted_data: Dictionary = forge.get("data")
+    if int(painted_data["tiles"][10][5]) != 2:
+        _fail("Map Forge paint tool did not update the visible tile data")
+        return
+    forge.call("_undo")
+    forge.call("_test_map")
     await physics_frame
-    if main.current_level != 4 or main.level_world_width != 2200.0 or not ResourceLoader.exists("res://assets/backgrounds/luminous_caves_test.jpg"):
-        _fail("Luminous Caves test map did not load its supplied background")
+    if main.current_level != 99 or not main.game_started or not main.custom_map_active:
+        _fail("Map Forge Test Map did not enter the real custom gameplay runtime")
         return
-    if not _has_platform_at(main, Vector2(315, 240)) or not _has_platform_at(main, Vector2(2040, 520)):
-        _fail("Luminous Caves test map is missing its top-left or lower-right collision surfaces")
+    var custom_platform_count := 0
+    for level_child in main.level_root.get_children():
+        if level_child.is_in_group("platforms"):
+            custom_platform_count += 1
+    if custom_platform_count < 1 or get_nodes_in_group("enemies").is_empty():
+        _fail("Custom map runtime did not build collision terrain and enemy instances")
         return
-    if get_nodes_in_group("enemies").size() < 7:
-        _fail("Luminous Caves test map did not populate its enemy trial encounters")
+    main._return_to_map_forge()
+    await process_frame
+    if main.game_started or not forge.visible:
+        _fail("Test Map did not return to the preserved editor session")
+        return
+    if not MapForgeData.delete_map(str(saved_data["id"])):
+        _fail("Map Forge smoke map cleanup failed")
         return
     main._return_to_main_menu()
     main._start_game()

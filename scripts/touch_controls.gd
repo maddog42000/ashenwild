@@ -35,9 +35,9 @@ func _input(event: InputEvent) -> void:
 func _press_finger(index: int, point: Vector2) -> void:
     if fingers.has(index):
         return
-    var scale := _ui_scale(get_viewport_rect().size)
+    var ui_scale_factor := _ui_scale(get_viewport_rect().size)
     var center: Vector2 = _positions(get_viewport_rect().size)["stick"]
-    if point.distance_to(center) <= STICK_TOUCH_RADIUS * scale:
+    if point.distance_to(center) <= STICK_TOUCH_RADIUS * ui_scale_factor:
         fingers[index] = {"kind": "stick", "action": ""}
         active_sticks[index] = center
         _update_stick(index, point)
@@ -68,19 +68,19 @@ func _drag_finger(index: int, point: Vector2) -> void:
     get_viewport().set_input_as_handled()
 
 func _update_stick(index: int, point: Vector2) -> void:
-    var size := get_viewport_rect().size
-    var center: Vector2 = _positions(size)["stick"]
-    var scale := _ui_scale(size)
+    var viewport_size := get_viewport_rect().size
+    var center: Vector2 = _positions(viewport_size)["stick"]
+    var ui_scale_factor := _ui_scale(viewport_size)
     var offset := point - center
-    var maximum := STICK_OUTER_RADIUS * 0.68 * scale
+    var maximum := STICK_OUTER_RADIUS * 0.68 * ui_scale_factor
     if offset.length() > maximum:
         offset = offset.normalized() * maximum
     active_sticks[index] = center + offset
 
     var next_action := ""
-    if offset.x < -STICK_DEAD_ZONE * scale:
+    if offset.x < -STICK_DEAD_ZONE * ui_scale_factor:
         next_action = "move_left"
-    elif offset.x > STICK_DEAD_ZONE * scale:
+    elif offset.x > STICK_DEAD_ZONE * ui_scale_factor:
         next_action = "move_right"
     var finger: Dictionary = fingers[index]
     var previous_action: String = finger["action"]
@@ -118,28 +118,28 @@ func _change_count(action: String, amount: int) -> void:
         Input.action_release(action)
     queue_redraw()
 
-func _ui_scale(size: Vector2) -> float:
-    return clampf(minf(size.x / 960.0, size.y / 540.0), 0.75, 1.3)
+func _ui_scale(viewport_size: Vector2) -> float:
+    return clampf(minf(viewport_size.x / 960.0, viewport_size.y / 540.0), 0.75, 1.3)
 
-func _positions(size: Vector2) -> Dictionary:
-    var scale := _ui_scale(size)
-    var lower_y := size.y - 122.0 * scale
+func _positions(viewport_size: Vector2) -> Dictionary:
+    var ui_scale_factor := _ui_scale(viewport_size)
+    var lower_y := viewport_size.y - 122.0 * ui_scale_factor
     return {
-        "stick": Vector2(145.0 * scale, lower_y),
-        "jump": Vector2(size.x - 285.0 * scale, lower_y),
-        "attack": Vector2(size.x - 88.0 * scale, lower_y),
-        "bow_fire": Vector2(size.x - 175.0 * scale, lower_y - 132.0 * scale),
-        "shield": Vector2(size.x - 76.0 * scale, lower_y - 226.0 * scale),
-        "touch_pause": Vector2(size.x - 62.0 * scale, 52.0 * scale),
-        "restart": Vector2(size.x - 148.0 * scale, 52.0 * scale)
+        "stick": Vector2(145.0 * ui_scale_factor, lower_y),
+        "jump": Vector2(viewport_size.x - 285.0 * ui_scale_factor, lower_y),
+        "attack": Vector2(viewport_size.x - 88.0 * ui_scale_factor, lower_y),
+        "bow_fire": Vector2(viewport_size.x - 175.0 * ui_scale_factor, lower_y - 132.0 * ui_scale_factor),
+        "shield": Vector2(viewport_size.x - 76.0 * ui_scale_factor, lower_y - 226.0 * ui_scale_factor),
+        "touch_pause": Vector2(viewport_size.x - 62.0 * ui_scale_factor, 52.0 * ui_scale_factor),
+        "restart": Vector2(viewport_size.x - 148.0 * ui_scale_factor, 52.0 * ui_scale_factor)
     }
 
 func _action_at(point: Vector2) -> String:
-    var size := get_viewport_rect().size
-    var scale := _ui_scale(size)
-    var buttons := _positions(size)
+    var viewport_size := get_viewport_rect().size
+    var ui_scale_factor := _ui_scale(viewport_size)
+    var buttons := _positions(viewport_size)
     for action in ["jump", "attack", "bow_fire", "shield", "restart", "touch_pause"]:
-        var radius := _hit_radius(action) * scale
+        var radius := _hit_radius(action) * ui_scale_factor
         if point.distance_to(buttons[action]) <= radius:
             return action
     return ""
@@ -154,33 +154,33 @@ func _hit_radius(action: String) -> float:
     return 0.0
 
 func _draw() -> void:
-    var size := get_viewport_rect().size
-    var scale := _ui_scale(size)
-    var positions := _positions(size)
+    var viewport_size := get_viewport_rect().size
+    var ui_scale_factor := _ui_scale(viewport_size)
+    var positions := _positions(viewport_size)
     var center: Vector2 = positions["stick"]
     var knob_position := center
     if not active_sticks.is_empty():
         knob_position = active_sticks.values()[active_sticks.size() - 1]
     var stick_fill := Color(0.39, 0.66, 0.60, 0.22)
     var stick_edge := Color(0.86, 0.96, 0.88, 0.60)
-    draw_circle(center, STICK_OUTER_RADIUS * scale, stick_fill)
-    draw_arc(center, STICK_OUTER_RADIUS * scale, 0.0, TAU, 48, stick_edge, 3.0 * scale)
-    draw_arc(center, STICK_OUTER_RADIUS * 0.68 * scale, 0.0, TAU, 40, Color(0.86, 0.96, 0.88, 0.23), 1.5 * scale)
+    draw_circle(center, STICK_OUTER_RADIUS * ui_scale_factor, stick_fill)
+    draw_arc(center, STICK_OUTER_RADIUS * ui_scale_factor, 0.0, TAU, 48, stick_edge, 3.0 * ui_scale_factor)
+    draw_arc(center, STICK_OUTER_RADIUS * 0.68 * ui_scale_factor, 0.0, TAU, 40, Color(0.86, 0.96, 0.88, 0.23), 1.5 * ui_scale_factor)
     var left_color := Color(0.95, 1.0, 0.94, 0.98) if counts["move_left"] > 0 else Color(0.85, 0.94, 0.88, 0.58)
     var right_color := Color(0.95, 1.0, 0.94, 0.98) if counts["move_right"] > 0 else Color(0.85, 0.94, 0.88, 0.58)
     var font := ThemeDB.fallback_font
-    draw_string(font, center + Vector2(-66.0 * scale, 8.0 * scale), "◀", HORIZONTAL_ALIGNMENT_LEFT, -1, int(27.0 * scale), left_color)
-    draw_string(font, center + Vector2(48.0 * scale, 8.0 * scale), "▶", HORIZONTAL_ALIGNMENT_LEFT, -1, int(27.0 * scale), right_color)
+    draw_string(font, center + Vector2(-66.0 * ui_scale_factor, 8.0 * ui_scale_factor), "◀", HORIZONTAL_ALIGNMENT_LEFT, -1, int(27.0 * ui_scale_factor), left_color)
+    draw_string(font, center + Vector2(48.0 * ui_scale_factor, 8.0 * ui_scale_factor), "▶", HORIZONTAL_ALIGNMENT_LEFT, -1, int(27.0 * ui_scale_factor), right_color)
     var knob_active := not active_sticks.is_empty()
-    draw_circle(knob_position, STICK_KNOB_RADIUS * scale, Color(0.69, 0.86, 0.77, 0.84 if knob_active else 0.42))
-    draw_arc(knob_position, STICK_KNOB_RADIUS * scale, 0.0, TAU, 36, Color(0.95, 1.0, 0.94, 0.72), 2.2 * scale)
+    draw_circle(knob_position, STICK_KNOB_RADIUS * ui_scale_factor, Color(0.69, 0.86, 0.77, 0.84 if knob_active else 0.42))
+    draw_arc(knob_position, STICK_KNOB_RADIUS * ui_scale_factor, 0.0, TAU, 36, Color(0.95, 1.0, 0.94, 0.72), 2.2 * ui_scale_factor)
 
-    _draw_button(positions["jump"], "JUMP", counts["jump"] > 0, 80.0 * scale)
-    _draw_button(positions["attack"], "ATTACK", counts["attack"] > 0, 70.0 * scale)
-    _draw_button(positions["bow_fire"], "BOW", counts["bow_fire"] > 0, 51.0 * scale)
-    _draw_button(positions["shield"], "SHIELD", counts["shield"] > 0, 61.0 * scale)
-    _draw_button(positions["restart"], "↻", counts["restart"] > 0, 34.0 * scale)
-    _draw_button(positions["touch_pause"], "Ⅱ", counts["touch_pause"] > 0, 34.0 * scale)
+    _draw_button(positions["jump"], "JUMP", counts["jump"] > 0, 80.0 * ui_scale_factor)
+    _draw_button(positions["attack"], "ATTACK", counts["attack"] > 0, 70.0 * ui_scale_factor)
+    _draw_button(positions["bow_fire"], "BOW", counts["bow_fire"] > 0, 51.0 * ui_scale_factor)
+    _draw_button(positions["shield"], "SHIELD", counts["shield"] > 0, 61.0 * ui_scale_factor)
+    _draw_button(positions["restart"], "↻", counts["restart"] > 0, 34.0 * ui_scale_factor)
+    _draw_button(positions["touch_pause"], "Ⅱ", counts["touch_pause"] > 0, 34.0 * ui_scale_factor)
 
 func _draw_button(center: Vector2, label: String, active: bool, radius: float) -> void:
     var fill := Color(0.62, 0.82, 0.70, 0.86 if active else 0.46)

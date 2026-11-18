@@ -28,7 +28,7 @@ func _physics_process(delta: float) -> void:
         return
     var destination := global_position + travel_velocity * delta
     var query := PhysicsRayQueryParameters2D.create(global_position, destination)
-    query.collision_mask = 1
+    query.collision_mask = 3
     query.collide_with_bodies = true
     query.collide_with_areas = false
     if shooter_rid.is_valid():

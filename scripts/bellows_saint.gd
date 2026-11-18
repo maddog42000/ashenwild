@@ -36,7 +36,7 @@ var core_glow: Polygon2D
 var ember_markers: Array[Node2D] = []
 
 func _ready() -> void:
-    collision_layer = 1
+    collision_layer = 2
     collision_mask = 1
     var body_shape := RectangleShape2D.new()
     body_shape.size = Vector2(170.0, 110.0)
@@ -82,6 +82,13 @@ func _make_visuals() -> void:
     _update_facing_visuals()
 
 func _physics_process(delta: float) -> void:
+    if is_defeated:
+        velocity = Vector2.ZERO
+        state_timer = maxf(0.0, state_timer - delta)
+        if not defeat_signal_sent and state_timer <= 0.0:
+            defeat_signal_sent = true
+            defeated.emit()
+        return
     if not is_on_floor():
         velocity.y += GRAVITY * delta
     else:
@@ -94,12 +101,8 @@ func _physics_process(delta: float) -> void:
         facing = 1 if player.global_position.x >= global_position.x else -1
         _update_facing_visuals()
 
-    if state == BossState.DORMANT or state == BossState.DEFEATED:
-        if state == BossState.DEFEATED and not defeat_signal_sent and state_timer <= 0.0:
-            defeat_signal_sent = true
-            defeated.emit()
-        else:
-            state_timer = maxf(0.0, state_timer - delta)
+    if state == BossState.DORMANT:
+        state_timer = maxf(0.0, state_timer - delta)
         return
 
     state_timer -= delta
@@ -281,10 +284,12 @@ func is_arrow_target_hit(hit_position: Vector2) -> bool:
     var target := global_position + Vector2(float(facing) * 98.0, -50.0)
     return hit_position.distance_to(target) <= 30.0
 
-func take_damage(amount: int, hit_direction: int) -> void:
+func take_damage(amount: int, _hit_direction: int) -> void:
     if not active or is_defeated or not core_open:
         return
-    health = maxi(0, health - amount)
+    var player := get_tree().get_first_node_in_group("player")
+    var damage_amount := MAX_HEALTH if is_instance_valid(player) and bool(player.get("cheat_one_hit_kill")) else amount
+    health = maxi(0, health - damage_amount)
     core_open = false
     core_glow.visible = false
     health_changed.emit(health, MAX_HEALTH)

@@ -16,7 +16,7 @@ var dead := false
 var contact_ready_at := 0
 
 func _ready() -> void:
-    collision_layer = 1
+    collision_layer = 2
     collision_mask = 1
     var shape := CapsuleShape2D.new()
     shape.radius = 17.0
@@ -98,7 +98,9 @@ func apply_contact_damage(player: Node) -> void:
 func take_damage(amount: int, hit_direction: int) -> void:
     if dead:
         return
-    health -= amount
+    var player := get_tree().get_first_node_in_group("player")
+    var damage_amount := MAX_HEALTH if is_instance_valid(player) and bool(player.get("cheat_one_hit_kill")) else amount
+    health -= damage_amount
     velocity = Vector2(hit_direction * 240.0, -150.0)
     modulate = Color(1.0, 0.62, 0.48)
     if health <= 0:

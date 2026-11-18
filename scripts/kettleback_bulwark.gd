@@ -20,7 +20,7 @@ var jaw_core: Polygon2D
 var tell_glow: Polygon2D
 
 func _ready() -> void:
-    collision_layer = 1
+    collision_layer = 2
     collision_mask = 1
     add_to_group("enemies")
     var shape := CapsuleShape2D.new()
@@ -150,7 +150,9 @@ func take_damage(amount: int, hit_direction: int) -> void:
 func _apply_damage(amount: int, hit_direction: int) -> void:
     if dead or state != "exposed":
         return
-    health = maxi(0, health - amount)
+    var player := get_tree().get_first_node_in_group("player")
+    var damage_amount := MAX_HEALTH if is_instance_valid(player) and bool(player.get("cheat_one_hit_kill")) else amount
+    health = maxi(0, health - damage_amount)
     velocity = Vector2(float(hit_direction) * 95.0, -55.0)
     if health <= 0:
         dead = true
