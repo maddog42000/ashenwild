@@ -78,15 +78,15 @@ static func validate_playable(data: Dictionary) -> String:
 	var error_text: String = validate(data)
 	if not error_text.is_empty():
 		return error_text
-	for item in data.get("objects", []):
-		if str(item.get("type", "")) == "exit":
-			return ""
 	var spawn: Dictionary = data.get("spawn", {})
 	var spawn_x: int = int(spawn.get("x", 0))
 	var spawn_y: int = int(spawn.get("y", 0))
 	var tiles: Array = data.get("tiles", [])
 	if spawn_y + 1 >= int(data.get("height", 0)) or int(tiles[spawn_y + 1][spawn_x]) not in [1, 2, 3]:
 		return "Place a solid or one-way tile directly beneath the player spawn."
+	for item in data.get("objects", []):
+		if str(item.get("type", "")) == "exit":
+			return ""
 	return "Place at least one exit before testing."
 
 static func normalize(data: Dictionary) -> Dictionary:
