@@ -29,6 +29,9 @@ func _ready() -> void:
     add_to_group("enemies")
     _make_visual()
 
+func set_adaptive_speed_multiplier(value: float) -> void:
+    speed_multiplier = clampf(value, 0.86, 1.12)
+
 func _make_visual() -> void:
     var sprite := Sprite2D.new()
     sprite.name = "Sprite"
