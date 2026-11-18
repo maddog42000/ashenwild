@@ -9,6 +9,7 @@ const GLOAM_CANTOR_SCENE := preload("res://scenes/gloam_cantor.tscn")
 const MENU_MUSIC_PATH := "res://assets/audio/ashenwild_menu_theme.ogg"
 const GAME_MUSIC_PATH := "res://assets/audio/ashenwild_gameplay_theme.mp3"
 const TEST_MAP_PATH := "res://assets/backgrounds/luminous_caves_test.jpg"
+const MAP_FORGE_SCENE := preload("res://scenes/map_forge.tscn")
 
 var player: CharacterBody2D
 var camera: Camera2D
@@ -47,6 +48,7 @@ var music_toggle_buttons: Array[CheckButton] = []
 var cheat_toggle_buttons: Array[CheckButton] = []
 var cheat_options := {"invulnerable": false, "infinite_jumps": false, "speed_boost": false}
 var menu_music_enabled := true
+var map_forge_layer: CanvasLayer
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -736,6 +738,7 @@ func _build_hud() -> void:
     menu_stack.add_child(subtitle)
     menu_stack.add_child(_make_menu_button("BEGIN JOURNEY", _start_game))
     menu_stack.add_child(_make_menu_button("TEST MAP — LUMINOUS CAVES", _start_test_map))
+    menu_stack.add_child(_make_menu_button("MAP FORGE — CREATE YOUR OWN", _open_map_forge))
     var cheat_heading := _make_heading("OPTIONAL CHEATS", 16)
     cheat_heading.add_theme_color_override("font_color", Color(0.94, 0.70, 0.42))
     menu_stack.add_child(cheat_heading)
@@ -838,6 +841,25 @@ func _show_main_menu() -> void:
     pause_panel.visible = false
     main_menu_panel.visible = true
     _update_music_playback()
+
+
+func _open_map_forge() -> void:
+    if is_instance_valid(map_forge_layer):
+        return
+    map_forge_layer = CanvasLayer.new()
+    map_forge_layer.layer = 20
+    map_forge_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+    add_child(map_forge_layer)
+    var editor := MAP_FORGE_SCENE.instantiate() as Control
+    editor.process_mode = Node.PROCESS_MODE_ALWAYS
+    editor.closed.connect(_on_map_forge_closed)
+    map_forge_layer.add_child(editor)
+
+func _on_map_forge_closed() -> void:
+    if is_instance_valid(map_forge_layer):
+        map_forge_layer.queue_free()
+    map_forge_layer = null
+    _show_main_menu()
 
 func _start_game() -> void:
     game_started = true
