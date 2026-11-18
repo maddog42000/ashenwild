@@ -69,6 +69,9 @@ static func validate(data: Dictionary) -> String:
 	var sy: int = int(spawn_value.get("y", -1))
 	if sx < 0 or sx >= width or sy < 0 or sy >= height:
 		return "Player spawn is outside the map."
+	for object_value in objects_value:
+		if str(object_value.get("type", "")) in ["hazard", "enemy"] and int(object_value.get("x", -1)) == sx and int(object_value.get("y", -1)) == sy:
+			return "Player spawn overlaps a hazard or enemy."
 	return ""
 
 static func validate_playable(data: Dictionary) -> String:
@@ -78,12 +81,29 @@ static func validate_playable(data: Dictionary) -> String:
 	for item in data.get("objects", []):
 		if str(item.get("type", "")) == "exit":
 			return ""
+	var spawn: Dictionary = data.get("spawn", {})
+	var spawn_x: int = int(spawn.get("x", 0))
+	var spawn_y: int = int(spawn.get("y", 0))
+	var tiles: Array = data.get("tiles", [])
+	if spawn_y + 1 >= int(data.get("height", 0)) or int(tiles[spawn_y + 1][spawn_x]) not in [1, 2, 3]:
+		return "Place a solid or one-way tile directly beneath the player spawn."
 	return "Place at least one exit before testing."
 
 static func normalize(data: Dictionary) -> Dictionary:
 	var result: Dictionary = data.duplicate(true)
-	if not result.has("tiles") and result.get("cells") is Array:
-		var old_cells: Array = result["cells"]
+	var cells_value: Variant = result.get("cells", null)
+	if not result.has("tiles") and cells_value is Array:
+		var old_cells: Array = cells_value
+		var width: int = int(result.get("width", 0))
+		var height: int = int(result.get("height", 0))
+		if old_cells.size() != height:
+			return result
+		for row_value in old_cells:
+			if not row_value is Array or row_value.size() != width:
+				return result
+			for tile_value in row_value:
+				if not tile_value is int or int(tile_value) < 0 or int(tile_value) > 8:
+					return result
 		var terrain: Array = []
 		var objects: Array = []
 		for y in range(old_cells.size()):
@@ -141,11 +161,19 @@ static func save_map(data: Dictionary) -> Dictionary:
 	if not error_text.is_empty():
 		return {"ok": false, "error": error_text}
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(MAP_DIR))
-	if str(normalized.get("id", "")).is_empty():
-		normalized["id"] = _new_id()
+	var map_id: String = str(normalized.get("id", ""))
+	if map_id.is_empty():
+		map_id = _new_id()
+		while FileAccess.file_exists(MAP_DIR.path_join(map_id + ".json")):
+			map_id = _new_id()
+		normalized["id"] = map_id
+		normalized["created_at"] = Time.get_datetime_string_from_system(true)
+	elif map_id.validate_filename() != map_id:
+		return {"ok": false, "error": "The map identifier is invalid."}
+	if str(normalized.get("created_at", "")).is_empty():
 		normalized["created_at"] = Time.get_datetime_string_from_system(true)
 	normalized["modified_at"] = Time.get_datetime_string_from_system(true)
-	var path: String = MAP_DIR.path_join(str(normalized["id"]) + ".json")
+	var path: String = MAP_DIR.path_join(map_id + ".json")
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		return {"ok": false, "error": "Could not open the map file for writing."}
@@ -166,6 +194,8 @@ static func load_map(map_id: String) -> Dictionary:
 	if not parsed is Dictionary:
 		return {"ok": false, "error": "The map file is corrupted or unreadable."}
 	var normalized: Dictionary = normalize(parsed)
+	if str(normalized.get("id", "")).is_empty():
+		normalized["id"] = map_id
 	var error_text: String = validate(normalized)
 	if not error_text.is_empty():
 		return {"ok": false, "error": error_text}
