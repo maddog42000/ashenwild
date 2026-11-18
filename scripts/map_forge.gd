@@ -229,6 +229,9 @@ func _layout() -> void:
 	cell_size = maxf(5.0, cell_size)
 
 func _draw() -> void:
+	# Draw the backdrop on this Control. A full-screen child ColorRect used to
+	# render over the parent's custom drawing and hide every map tile.
+	draw_rect(Rect2(Vector2.ZERO, get_rect().size), Color(0.012, 0.019, 0.032, 0.98))
 	if canvas_rect.size.x <= 0:
 		return
 	draw_rect(canvas_rect, Color(0.018, 0.027, 0.043))
