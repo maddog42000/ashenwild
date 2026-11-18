@@ -121,7 +121,7 @@ func _build_ui() -> void:
 	for kind in PALETTE:
 		var b := _button(kind, _choose_kind.bind(kind))
 		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(76, 34)
+		b.custom_minimum_size = Vector2(68, 34)
 		b.add_theme_font_size_override("font_size", 10)
 		b.add_theme_color_override("font_color", COLORS[kind])
 		palette_grid.add_child(b)
@@ -153,7 +153,7 @@ func _build_ui() -> void:
 	stack.add_child(_button("NEW BLANK MAP", _new_map))
 	stack.add_child(_label("MY MAPS"))
 	maps_list = ItemList.new()
-	maps_list.custom_minimum_size = Vector2(150, 94)
+	maps_list.custom_minimum_size = Vector2(130, 94)
 	maps_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	maps_list.item_selected.connect(_on_map_selected)
 	stack.add_child(maps_list)
