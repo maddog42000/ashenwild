@@ -25,7 +25,7 @@ var test_message := ""
 var name_edit: LineEdit
 var status_label: Label
 var palette: VBoxContainer
-var canvas_rect := Rect2(190, 78, 730, 420)
+var canvas_rect := Rect2(190, 78, 720, 432)
 var mouse_down := false
 var test_left := false
 var test_right := false
@@ -281,7 +281,7 @@ func _load_map() -> void:
                 var parsed: Variant = JSON.parse_string(file.get_as_text())
                 if parsed is Dictionary and int(parsed.get("version", 0)) == 1 and parsed.get("cells") is Array:
                     var loaded: Array = parsed["cells"]
-                    if loaded.size() == MAP_H:
+                    if loaded.size() == MAP_H and loaded.all(func(row): return row is Array and row.size() == MAP_W):
                         cells = loaded
                         map_name = str(parsed.get("name", "Loaded Hollow"))
                         name_edit.text = map_name
