@@ -642,13 +642,19 @@ func _build_hud() -> void:
     pause_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     pause_panel.add_child(pause_center)
     var pause_card := PanelContainer.new()
-    pause_card.custom_minimum_size = Vector2(410, 470)
+    pause_card.custom_minimum_size = Vector2(410, maxf(300.0, minf(440.0, get_viewport_rect().size.y - 24.0)))
     _style_card(pause_card)
     pause_center.add_child(pause_card)
+    var pause_scroll := ScrollContainer.new()
+    pause_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    pause_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    pause_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    pause_card.add_child(pause_scroll)
     var pause_stack := VBoxContainer.new()
+    pause_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     pause_stack.add_theme_constant_override("separation", 10)
     pause_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-    pause_card.add_child(pause_stack)
+    pause_scroll.add_child(pause_stack)
     pause_title = _make_heading("PAUSED", 30)
     pause_stack.add_child(pause_title)
     resume_button = _make_menu_button("RESUME", _resume_game)
