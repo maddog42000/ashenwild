@@ -500,7 +500,7 @@ func _make_exit(at: Vector2) -> void:
 func _spawn_death_drop(at: Vector2, amount: int) -> void:
     var drop := Node2D.new()
     drop.name = "LostAshenShards"
-    drop.position = at
+    drop.position = at + Vector2(72.0, -6.0)
     drop.add_to_group("death_drops")
     var halo := Polygon2D.new()
     halo.polygon = PackedVector2Array([Vector2(0, -22), Vector2(17, 0), Vector2(0, 22), Vector2(-17, 0)])
@@ -516,12 +516,17 @@ func _spawn_death_drop(at: Vector2, amount: int) -> void:
     area.collision_mask = 1
     var shape := CollisionShape2D.new()
     var circle := CircleShape2D.new()
-    circle.radius = 42.0
+    circle.radius = 34.0
     shape.shape = circle
     area.add_child(shape)
+    area.monitoring = false
     area.body_entered.connect(_on_death_drop_entered.bind(drop))
     drop.add_child(area)
     level_root.add_child(drop)
+    get_tree().create_timer(0.85).timeout.connect(func():
+        if is_instance_valid(area):
+            area.monitoring = true
+    )
     _show_message("%d ASHEN SHARDS LOST  •  RETURN TO RECOVER THEM" % amount, 3.0)
 
 func _on_death_drop_entered(body: Node2D, drop: Node2D) -> void:
