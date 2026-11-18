@@ -52,8 +52,11 @@ func _run() -> void:
     if main.game_music_player.stream == null or not (main.game_music_player.stream is AudioStreamMP3) or not (main.game_music_player.stream as AudioStreamMP3).loop:
         _fail("User-provided gameplay MP3 did not load as a looping game stream")
         return
-    if not is_instance_valid(_button_named(main.main_menu_panel, "TEST MAP — LUMINOUS CAVES")):
-        _fail("Main menu did not expose the Luminous Caves test map")
+    if not is_instance_valid(_button_named(main.main_menu_panel, "MAP FORGE — CREATE YOUR OWN")):
+        _fail("Main menu did not expose Map Forge")
+        return
+    if is_instance_valid(_button_named(main.main_menu_panel, "TEST MAP — LUMINOUS CAVES")):
+        _fail("Removed experimental map is still exposed in the title menu")
         return
     if int(ProjectSettings.get_setting("display/window/handheld/orientation")) != 4:
         _fail("Mobile orientation is not sensor landscape")
@@ -87,16 +90,65 @@ func _run() -> void:
     if not main.game_music_player.playing or main.music_player.playing:
         _fail("Starting the game did not switch from menu music to the supplied gameplay track")
         return
-    main._start_test_map()
+    main._open_map_forge()
+    await process_frame
+    if not is_instance_valid(main.map_forge_layer) or main.map_forge_layer.get_child_count() == 0:
+        _fail("Map Forge did not open from the title menu")
+        return
+    var forge: Control = main.map_forge_layer.get_child(0) as Control
+    var draft: Dictionary = MapForgeData.make_new("Map Forge Smoke", 32, 18)
+    for x in range(32):
+        draft["tiles"][15][x] = 1
+        draft["tiles"][16][x] = 1
+    draft["spawn"] = {"x": 2, "y": 14}
+    draft["objects"] = [
+        {"type": "shard", "x": 7, "y": 14},
+        {"type": "checkpoint", "x": 12, "y": 14},
+        {"type": "enemy", "x": 20, "y": 14},
+        {"type": "hazard", "x": 25, "y": 14},
+        {"type": "exit", "x": 29, "y": 14}
+    ]
+    if not MapForgeData.validate_playable(draft).is_empty():
+        _fail("Map Forge rejected a valid test layout")
+        return
+    var saved_map: Dictionary = MapForgeData.save_map(draft)
+    if not saved_map.get("ok", false):
+        _fail("Map Forge could not persist a map")
+        return
+    var saved_data: Dictionary = saved_map["data"]
+    var loaded_map: Dictionary = MapForgeData.load_map(str(saved_data["id"]))
+    if not loaded_map.get("ok", false) or str(loaded_map["data"]["name"]) != "Map Forge Smoke":
+        _fail("Map Forge could not reload a saved map")
+        return
+    var duplicated_map: Dictionary = MapForgeData.duplicate_map(saved_data, "Map Forge Smoke Copy")
+    if not duplicated_map.get("ok", false):
+        _fail("Map Forge could not duplicate a saved map")
+        return
+    if not MapForgeData.delete_map(str(duplicated_map["data"]["id"])):
+        _fail("Map Forge could not delete a duplicate")
+        return
+    forge.set("data", saved_data)
+    var forge_name_field: LineEdit = forge.get("name_field")
+    forge_name_field.text = "Map Forge Smoke"
+    forge.call("_test_map")
     await physics_frame
-    if main.current_level != 4 or main.level_world_width != 2200.0 or not ResourceLoader.exists("res://assets/backgrounds/luminous_caves_test.jpg"):
-        _fail("Luminous Caves test map did not load its supplied background")
+    if main.current_level != 99 or not main.game_started or not main.custom_map_active:
+        _fail("Map Forge Test Map did not enter the real custom gameplay runtime")
         return
-    if not _has_platform_at(main, Vector2(315, 240)) or not _has_platform_at(main, Vector2(2040, 520)):
-        _fail("Luminous Caves test map is missing its top-left or lower-right collision surfaces")
+    var custom_platform_count := 0
+    for level_child in main.level_root.get_children():
+        if level_child.is_in_group("platforms"):
+            custom_platform_count += 1
+    if custom_platform_count < 1 or get_nodes_in_group("enemies").is_empty():
+        _fail("Custom map runtime did not build collision terrain and enemy instances")
         return
-    if get_nodes_in_group("enemies").size() < 7:
-        _fail("Luminous Caves test map did not populate its enemy trial encounters")
+    main._return_to_map_forge()
+    await process_frame
+    if main.game_started or not forge.visible:
+        _fail("Test Map did not return to the preserved editor session")
+        return
+    if not MapForgeData.delete_map(str(saved_data["id"])):
+        _fail("Map Forge smoke map cleanup failed")
         return
     main._return_to_main_menu()
     main._start_game()
