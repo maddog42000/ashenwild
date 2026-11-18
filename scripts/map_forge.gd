@@ -28,6 +28,7 @@ var undo_stack: Array[Dictionary] = []
 var redo_stack: Array[Dictionary] = []
 var painting := false
 var name_field: LineEdit
+var description_field: LineEdit
 var status: Label
 var palette_grid: GridContainer
 var paint_tool_button: Button
@@ -134,6 +135,9 @@ func _build_ui() -> void:
 	seed_field.text = "20261118"
 	seed_field.placeholder_text = "Seed"
 	stack.add_child(seed_field)
+	description_field = LineEdit.new()
+	description_field.placeholder_text = "Description (optional)"
+	stack.add_child(description_field)
 	var dimension_row := HBoxContainer.new()
 	width_field = SpinBox.new()
 	width_field.min_value = MapForgeData.MIN_WIDTH
@@ -412,6 +416,7 @@ func _redo() -> void:
 
 func _sync_fields() -> void:
 	name_field.text = str(data["name"])
+	description_field.text = str(data.get("description", ""))
 	width_field.value = int(data["width"])
 	height_field.value = int(data["height"])
 	_layout()
@@ -443,6 +448,7 @@ func _randomize() -> void:
 
 func _save_map() -> void:
 	data["name"] = name_field.text.strip_edges()
+	data["description"] = description_field.text.strip_edges()
 	if str(data["name"]).is_empty():
 		status.text = "Enter a map name before saving."
 		return
