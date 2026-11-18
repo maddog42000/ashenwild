@@ -313,11 +313,11 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag and painting:
 		_paint(event.position)
 
-func _paint(position: Vector2) -> void:
-	if not canvas_rect.has_point(position):
+func _paint(paint_position: Vector2) -> void:
+	if not canvas_rect.has_point(paint_position):
 		return
 	var origin := canvas_rect.position + (canvas_rect.size - Vector2(data["width"], data["height"]) * cell_size) * 0.5
-	var cell := Vector2i(floori((position.x - origin.x) / cell_size), floori((position.y - origin.y) / cell_size))
+	var cell := Vector2i(floori((paint_position.x - origin.x) / cell_size), floori((paint_position.y - origin.y) / cell_size))
 	if cell.x < 0 or cell.x >= int(data["width"]) or cell.y < 0 or cell.y >= int(data["height"]):
 		return
 	selected_cell = cell
@@ -507,12 +507,12 @@ func _rename_map() -> void:
 	if not result.get("ok", false):
 		status.text = str(result.get("error", "Could not load map."))
 		return
-	var renamed: Dictionary = result["data"]
-	renamed["name"] = name_field.text.strip_edges()
+	var renamed_data: Dictionary = result["data"]
+	renamed_data["name"] = name_field.text.strip_edges()
 	if str(renamed["name"]).is_empty():
 		status.text = "Enter the new name first."
 		return
-	var saved: Dictionary = MapForgeData.save_map(renamed)
+	var saved: Dictionary = MapForgeData.save_map(renamed_data)
 	if saved.get("ok", false):
 		_refresh_maps()
 		status.text = "Map renamed."
