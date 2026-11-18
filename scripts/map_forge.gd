@@ -46,6 +46,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	data = MapForgeData.make_new("Untitled Hollow", 40, 20)
+	_seed_starter_layout()
 	_record()
 	_build_ui()
 	_layout()
@@ -57,13 +58,26 @@ func _notification(what: int) -> void:
 		_layout()
 		queue_redraw()
 
-func _build_ui() -> void:
-	var background := ColorRect.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.color = Color(0.012, 0.019, 0.032, 0.98)
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(background)
+func _seed_starter_layout() -> void:
+	# Start with a visible playable sample so the editor never opens as an empty void.
+	var width: int = int(data["width"])
+	var height: int = int(data["height"])
+	var floor_y: int = height - 2
+	for x in range(width):
+		data["tiles"][floor_y][x] = 1
+		data["tiles"][floor_y + 1][x] = 1
+	for x in range(8, 14):
+		data["tiles"][height - 7][x] = 2
+	for x in range(22, 27):
+		data["tiles"][height - 10][x] = 1
+	data["objects"] = [
+		{"type": "enemy", "x": 11, "y": height - 8},
+		{"type": "shard", "x": 18, "y": height - 5},
+		{"type": "checkpoint", "x": 29, "y": height - 3},
+		{"type": "exit", "x": width - 3, "y": height - 3}
+	]
 
+func _build_ui() -> void:
 	var header := PanelContainer.new()
 	header.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	header.offset_left = 12
