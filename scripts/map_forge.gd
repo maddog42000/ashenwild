@@ -509,7 +509,7 @@ func _rename_map() -> void:
 		return
 	var renamed_data: Dictionary = result["data"]
 	renamed_data["name"] = name_field.text.strip_edges()
-	if str(renamed["name"]).is_empty():
+	if str(renamed_data["name"]).is_empty():
 		status.text = "Enter the new name first."
 		return
 	var saved: Dictionary = MapForgeData.save_map(renamed_data)
