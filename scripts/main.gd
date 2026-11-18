@@ -894,7 +894,6 @@ func _return_to_map_forge() -> void:
 	var editor := map_forge_layer.get_child(0) as Control
 	if editor != null and editor.has_method("return_from_test"):
 		editor.call("return_from_test")
-	map_forge_layer.visible = true
 	_update_music_playback()
 
 func _start_game() -> void:
