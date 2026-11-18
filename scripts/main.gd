@@ -522,7 +522,9 @@ func _surface_spawn_position(requested: Vector2, half_height: float) -> Vector2:
 
 func _make_elite(scene: PackedScene, at: Vector2) -> void:
     var elite := scene.instantiate() as Node2D
-    elite.position = at
+    # Kettleback is a grounded 52px capsule; align its feet to the platform.
+    # Gloam Cantor is a hovering enemy and keeps its authored aerial position.
+    elite.position = _surface_spawn_position(at, 26.0) if scene == KETTLEBACK_SCENE else at
     elite.connect("status_changed", Callable(self, "_on_elite_status_changed"))
     level_root.add_child(elite)
 
