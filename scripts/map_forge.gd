@@ -1,6 +1,7 @@
 extends Control
 ## ASHENWILD Map Forge: offline, data-driven tile editor.
 signal closed
+signal map_test_requested(map_data: Dictionary)
 
 const MAP_W := 30
 const MAP_H := 18
@@ -104,7 +105,7 @@ func _build_ui() -> void:
     _button_in(bottom, "RANDOM MAP", _random_map)
     _button_in(bottom, "SAVE", _save_map)
     _button_in(bottom, "LOAD", _load_map)
-    _button_in(bottom, "TEST PLAY", _toggle_test)
+    _button_in(bottom, "PLAY IN GAME", _launch_test)
     status_label = Label.new()
     status_label.position = Vector2(20, 505)
     status_label.size = Vector2(155, 40)
@@ -292,6 +293,16 @@ func _load_map() -> void:
         filename = dir.get_next()
     dir.list_dir_end()
     status_label.text = "No valid map found."
+
+
+func _launch_test() -> void:
+    map_name = name_edit.text.strip_edges()
+    if map_name.is_empty():
+        map_name = "Untitled Hollow"
+    var data := {"version": 1, "name": map_name, "width": MAP_W, "height": MAP_H, "tile_size": TILE, "cells": cells.duplicate(true)}
+    map_test_requested.emit(data)
+    closed.emit()
+    queue_free()
 
 func _toggle_test() -> void:
     testing = not testing
