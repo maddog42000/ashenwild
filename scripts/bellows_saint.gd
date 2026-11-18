@@ -281,7 +281,7 @@ func is_arrow_target_hit(hit_position: Vector2) -> bool:
     var target := global_position + Vector2(float(facing) * 98.0, -50.0)
     return hit_position.distance_to(target) <= 30.0
 
-func take_damage(amount: int, hit_direction: int) -> void:
+func take_damage(amount: int, _hit_direction: int) -> void:
     if not active or is_defeated or not core_open:
         return
     health = maxi(0, health - amount)
