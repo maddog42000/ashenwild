@@ -640,7 +640,7 @@ func _build_hud() -> void:
     pause_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     pause_panel.add_child(pause_center)
     var pause_card := PanelContainer.new()
-    pause_card.custom_minimum_size = Vector2(410, 410)
+    pause_card.custom_minimum_size = Vector2(410, 470)
     _style_card(pause_card)
     pause_center.add_child(pause_card)
     var pause_stack := VBoxContainer.new()
