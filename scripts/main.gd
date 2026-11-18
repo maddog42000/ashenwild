@@ -646,7 +646,7 @@ func _build_hud() -> void:
     shard_label.add_theme_color_override("font_color", Color(0.49, 0.91, 0.79))
     layer.add_child(shard_label)
     combat_label = Label.new()
-    combat_label.position = Vector2(22, 78)
+    combat_label.position = Vector2(22, 102)
     combat_label.add_theme_font_size_override("font_size", 16)
     combat_label.add_theme_color_override("font_color", Color(0.80, 0.90, 0.84))
     combat_label.visible = false
