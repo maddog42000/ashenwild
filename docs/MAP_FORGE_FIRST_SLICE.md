@@ -1,56 +1,51 @@
-# Map Forge: first playable editor slice
+# Map Forge rebuild
 
-## Purpose
-Map Forge is an offline, touch-friendly tile editor opened from the ASHENWILD title menu. It uses a versioned JSON map format so player-authored maps and future procedural/AI map generation can share the same data contract.
+## Scope and campaign safety
+The former image-backed Luminous Caves test-map gameplay hook and its collision builder have been removed from the main menu and campaign runtime. The original background image remains in `assets/backgrounds/luminous_caves_test.jpg` and is intentionally preserved as a reusable asset. The three campaign regions, player, enemies, elites, boss, touch controls, HUD, progression, profile autoload, and existing campaign construction remain in place.
 
-## Included in this pass
-- Title-menu entry: **MAP FORGE — CREATE YOUR OWN**.
-- 30 × 18 grid with 24 px cells.
-- Tap/click palette selection and paint placement, including drag painting.
-- Procedural tile palette: erase, stone, moss platform, hazard, Ash Mite marker, Ashen Shard, checkpoint, exit, crystal.
-- Undo/redo history.
-- Random Map draft generation with a floor, elevated platforms, pickups, enemy markers, checkpoint, and exit.
-- Local JSON save/load under `user://custom_maps/`.
-- **Play in Game:** launches the custom map using the actual ASHENWILD player controller, camera, touch controls, enemy scenes, hazard triggers, shard pickups, checkpoint banking, and exit trigger.
-- Custom map exits do not require the campaign gate shard.
-- Android-friendly Godot Control/Button interface; mouse/keyboard support remains available.
+Map Forge is kept separate from the campaign builder. Its data model lives in `scripts/map_forge_data.gd`, its editor UI in `scripts/map_forge.gd`, and custom-level construction in `scripts/custom_map_runtime.gd`.
 
-## Data contract (version 1)
-Each saved file contains:
-- `version`: integer, currently 1.
-- `name`: player-visible map name.
-- `width`, `height`, `tile_size`.
-- `cells`: 2D array of integer tile IDs.
+## Editor controls
+- Paint and Select tools.
+- Stone, moss, and one-way terrain.
+- Hazard, Ash Mite, Ashen Shard, checkpoint, exit, crystal, and player-spawn placement.
+- Visible grid and distinct drawn tile/object silhouettes.
+- Undo/redo, grid toggle, clear map, randomize, save, load, duplicate, rename, delete, create blank map, and Test Map.
+- Touch and mouse painting; keyboard shortcuts: Ctrl+Z, Ctrl+Y, Ctrl+S, G, Delete, and Escape.
+- Responsive layout for landscape screen sizes with a scrollable control rail and toolbar.
 
-Tile IDs:
-0 erase/empty, 1 stone, 2 moss platform, 3 hazard, 4 Ash Mite marker, 5 Ashen Shard, 6 checkpoint, 7 exit, 8 crystal.
+## Persistent map format
+Maps are stored as JSON under `user://custom_maps/`. Format version 2 contains:
+- Unique `id`, `name`, optional `description`, `created_at`, and `modified_at`.
+- `width`, `height`, and `tile_size`.
+- `tiles`: 2D terrain grid (0 empty, 1 stone, 2 moss, 3 one-way).
+- `objects`: typed object placements with grid x/y coordinates.
+- `spawn`: player spawn grid coordinates.
+- Optional `seed` for reproducible generated layouts.
 
-A future AI generator can return this same JSON structure. The game should validate dimensions, tile IDs, spawn/exit presence, object limits, and platform reachability before publishing or launching generated maps.
+The loader validates format, dimensions, grid shape, terrain values, object types/counts, and spawn bounds. Version 1 cell maps are normalized into the new data contract. Invalid/corrupted maps are skipped by the library list and rejected on explicit load. Saving a draft does not require an exit; Test Map requires at least one exit.
 
-## How to use
-1. Pull the `feature/map-forge` branch.
-2. Launch ASHENWILD and choose **MAP FORGE — CREATE YOUR OWN** from the title menu.
-3. Choose a piece on the left, then tap/drag over the grid.
-4. Use Undo/Redo as needed.
-5. Choose Random Map to create a starting layout.
-6. Save stores the map locally. Load opens the first valid local JSON map found.
-7. Play in Game launches the real gameplay runtime on the custom map. Use the in-game pause menu to return to title, then reopen Map Forge to continue editing.
-8. Back returns to the title menu.
+## Runtime behavior
+Terrain runs are merged horizontally into a single static collision body per contiguous run. One-way terrain uses one-way collision shapes. Hazards and object placements call the existing ASHENWILD gameplay handlers: enemies use the existing enemy scene, shards use the existing collectible/Ashen Shards path, checkpoints use the existing banking/respawn path, and exits use the existing completion path. Crystals are decorative and non-solid. The runtime builder is isolated from editor UI and campaign level construction.
 
-## Not yet implemented
-- Custom maps now use the real player and existing enemy, hazard, pickup, checkpoint, and exit systems. Crystal tiles remain decorative.
-- Custom maps are not yet wired into the campaign's full gameplay scene, progression, enemy scenes, or save slots.
-- Load currently chooses the first valid saved map rather than presenting a map browser.
-- No thumbnail generation, resize tool, rotate tool, object property inspector, multi-layer backgrounds, music selection, or full export/import share sheet yet.
-- No online publishing, downloads, moderation, ratings, or cloud sync.
-- Art is generated procedurally in-engine as crisp colored tile blocks with highlights. Dedicated production sprite/tile art and animations are a separate asset pass.
-- No Godot 4.7.2 editor import, runtime, or Android device test could be run in the connected editing environment. Run these before treating the feature as verified.
+Test Map saves the current editor state and hides, rather than frees, the editor instance. It then launches the custom level with the real player, camera, HUD, controls, and gameplay systems. The pause menu exposes **RETURN TO MAP FORGE** while testing. Returning hides the custom level and restores the same editor instance and map state without restarting the application.
 
-## Next implementation priorities
-1. Add map browser with rename, duplicate, delete, and explicit load selection.
-2. Replace marker-only entities with reusable runtime scene instances and collision rules.
-3. Add player spawn, map bounds, exit validation, and full gameplay Test Play using the existing player/enemy scenes.
-4. Add terrain autotiling and original pixel-art tile atlas/decoration assets.
-5. Add zoom/pan, brush size, selection/move, map resizing, and object inspector.
-6. Add import/export package with validation and thumbnails.
-7. Add online service only after authentication, moderation, storage, and privacy design are approved.
+## Generation
+The seeded generator provides Basic Platforming, Ruined Castle, Underground Caves, Forest Ruins, and Challenge Course styles. Generated layouts include a continuous safe route, a raised platform sequence, a spawn, a checkpoint, an exit, and a limited number of enemies/hazards/collectibles/decorative crystals. The continuous floor keeps the exit reachable; raised platforms are optional traversal routes rather than mandatory precision jumps.
+
+## Current limitations
+- Tile visuals are procedural drawings in the editor and simple runtime geometry, not a finished imported production tileset. Existing character/enemy/background artwork is preserved and remains available for future use.
+- The map library lists map names and dimensions but does not yet generate saved thumbnail images.
+- Multi-layer background/foreground painting, moving platforms, breakables, doors/gates, zoom/pan, object-property inspector, and export/import packages are not implemented.
+- The generator does not yet perform a full graph-based reachability or jump-physics simulation. It deliberately keeps a continuous base route to avoid generating impossible exits.
+- Android device interaction and PC runtime behavior still require testing on real targets.
+
+## Validation
+The gameplay smoke script now covers title-menu cleanup, map library save/load/duplicate/delete, real custom-map runtime construction, and the Test Map → Return to Map Forge workflow in addition to the existing campaign regression checks. Run with Godot 4.7.2:
+
+```sh
+godot --headless --path . --editor --quit
+godot --headless --path . --script res://tests/gameplay_smoke.gd
+```
+
+A successful source edit or static inspection is not a substitute for these runtime commands or an Android device test.
