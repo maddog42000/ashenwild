@@ -124,6 +124,8 @@ static func list_maps() -> Array[Dictionary]:
 				if parsed is Dictionary:
 					var normalized: Dictionary = normalize(parsed)
 					if validate(normalized).is_empty():
+						if str(normalized.get("id", "")).is_empty():
+							normalized["id"] = filename.get_basename()
 						normalized["file_name"] = filename
 						entries.append(normalized)
 		filename = directory.get_next()
