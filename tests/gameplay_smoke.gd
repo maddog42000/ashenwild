@@ -91,6 +91,16 @@ func _run() -> void:
         _fail("Starting the game did not switch from menu music to the supplied gameplay track")
         return
     main._return_to_main_menu()
+    var generator_styles := ["Basic Platforming", "Ruined Castle", "Underground Caves", "Forest Ruins", "Challenge Course"]
+    for generator_style in generator_styles:
+        var generated: Dictionary = MapForgeData.generate("Seeded Test", 32, 18, generator_style, 424242)
+        var generated_again: Dictionary = MapForgeData.generate("Seeded Test", 32, 18, generator_style, 424242)
+        if not MapForgeData.validate_playable(generated).is_empty():
+            _fail("Generator produced an invalid or unplayable %s map" % generator_style)
+            return
+        if JSON.stringify(generated["tiles"]) != JSON.stringify(generated_again["tiles"]) or JSON.stringify(generated["objects"]) != JSON.stringify(generated_again["objects"]):
+            _fail("Generator seed did not reproduce the %s layout" % generator_style)
+            return
     main._open_map_forge()
     await process_frame
     if not is_instance_valid(main.map_forge_layer) or main.map_forge_layer.get_child_count() == 0:
