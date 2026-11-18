@@ -323,6 +323,10 @@ func _paint(position: Vector2) -> void:
 	selected_cell = cell
 	if select_mode:
 		selected_object = _object_at(cell)
+		if selected_object >= 0:
+			status.text = "Selected object: %s at %d, %d" % [str(data["objects"][selected_object]["type"]), cell.x, cell.y]
+		else:
+			status.text = "Selected terrain cell at %d, %d" % [cell.x, cell.y]
 		queue_redraw()
 		return
 	if _cell_already_matches(cell):
