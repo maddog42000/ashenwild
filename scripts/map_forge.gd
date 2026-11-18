@@ -600,21 +600,6 @@ func _label(value: String) -> Label:
 	label.add_theme_color_override("font_color", Color(0.93, 0.72, 0.42))
 	return label
 
-func _refresh_palette() -> void:
-	if not is_instance_valid(palette_grid):
-		return
-	for child in palette_grid.get_children():
-		if child is Button:
-			child.button_pressed = child.text == active_kind
-			child.modulate = Color.WHITE if child.text == active_kind else Color(0.78, 0.82, 0.84)
-
-func return_from_test() -> void:
-	visible = true
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	_refresh_maps()
-	status.text = "Returned from test. Your editor session is intact."
-	queue_redraw()
-
 func _close() -> void:
 	closed.emit()
 	queue_free()
