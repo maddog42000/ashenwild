@@ -2,7 +2,7 @@ extends Control
 ## ASHENWILD Map Forge: offline, data-driven tile editor.
 signal closed
 
-const MAP_W := 40
+const MAP_W := 30
 const MAP_H := 18
 const TILE := 24
 const MAP_DIR := "user://custom_maps"
