@@ -30,6 +30,8 @@ var painting := false
 var name_field: LineEdit
 var status: Label
 var palette_grid: GridContainer
+var paint_tool_button: Button
+var select_tool_button: Button
 var maps_list: ItemList
 var maps: Array[Dictionary] = []
 var style_picker: OptionButton
@@ -101,12 +103,14 @@ func _build_ui() -> void:
 	side_scroll.add_child(stack)
 	stack.add_child(_label("TOOLS & PIECES"))
 	var tool_row := HBoxContainer.new()
-	var paint_button := _button("PAINT", func(): _set_select_mode(false))
-	var select_button := _button("SELECT", func(): _set_select_mode(true))
-	paint_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	select_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tool_row.add_child(paint_button)
-	tool_row.add_child(select_button)
+	paint_tool_button = _button("PAINT", func(): _set_select_mode(false))
+	select_tool_button = _button("SELECT", func(): _set_select_mode(true))
+	paint_tool_button.toggle_mode = true
+	select_tool_button.toggle_mode = true
+	paint_tool_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	select_tool_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tool_row.add_child(paint_tool_button)
+	tool_row.add_child(select_tool_button)
 	stack.add_child(tool_row)
 	palette_grid = GridContainer.new()
 	palette_grid.columns = 2
@@ -114,8 +118,8 @@ func _build_ui() -> void:
 	palette_grid.add_theme_constant_override("v_separation", 4)
 	stack.add_child(palette_grid)
 	for kind in PALETTE:
-		var chosen := kind
-		var b := _button(kind, func(): _choose_kind(chosen))
+		var b := _button(kind, _choose_kind.bind(kind))
+		b.toggle_mode = true
 		b.custom_minimum_size = Vector2(76, 34)
 		b.add_theme_font_size_override("font_size", 10)
 		b.add_theme_color_override("font_color", COLORS[kind])
@@ -368,6 +372,8 @@ func _choose_kind(kind: String) -> void:
 
 func _set_select_mode(enabled: bool) -> void:
 	select_mode = enabled
+	paint_tool_button.button_pressed = not enabled
+	select_tool_button.button_pressed = enabled
 	status.text = "Tap a cell to inspect its object." if enabled else "Paint mode active."
 
 func _refresh_palette() -> void:
@@ -375,6 +381,10 @@ func _refresh_palette() -> void:
 		if child is Button:
 			child.button_pressed = child.text == active_kind
 			child.modulate = Color.WHITE if child.text == active_kind else Color(0.78, 0.82, 0.84)
+	if is_instance_valid(paint_tool_button):
+		paint_tool_button.button_pressed = not select_mode
+	if is_instance_valid(select_tool_button):
+		select_tool_button.button_pressed = select_mode
 
 func _record() -> void:
 	undo_stack.append(data.duplicate(true))
