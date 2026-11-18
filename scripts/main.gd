@@ -51,6 +51,7 @@ var menu_music_enabled := true
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
     _setup_actions()
+    AshenProfile.begin_run()
     _build_hud()
     _build_level(1)
     player = PLAYER_SCENE.instantiate()
@@ -495,9 +496,57 @@ func _make_exit(at: Vector2) -> void:
     var area := _new_trigger("Exit", at, Vector2(80, 100))
     area.body_entered.connect(_on_exit_entered)
 
+
+func _spawn_death_drop(at: Vector2, amount: int) -> void:
+    var drop := Node2D.new()
+    drop.name = "LostAshenShards"
+    drop.position = at
+    drop.add_to_group("death_drops")
+    var halo := Polygon2D.new()
+    halo.polygon = PackedVector2Array([Vector2(0, -22), Vector2(17, 0), Vector2(0, 22), Vector2(-17, 0)])
+    halo.color = Color(0.20, 0.88, 0.82, 0.38)
+    drop.add_child(halo)
+    var core := Polygon2D.new()
+    core.polygon = PackedVector2Array([Vector2(0, -13), Vector2(10, 0), Vector2(0, 13), Vector2(-10, 0)])
+    core.color = Color(0.80, 1.0, 0.88)
+    drop.add_child(core)
+    var area := Area2D.new()
+    area.name = "RecoveryTrigger"
+    area.collision_layer = 0
+    area.collision_mask = 1
+    var shape := CollisionShape2D.new()
+    var circle := CircleShape2D.new()
+    circle.radius = 42.0
+    shape.shape = circle
+    area.add_child(shape)
+    area.body_entered.connect(_on_death_drop_entered.bind(drop))
+    drop.add_child(area)
+    level_root.add_child(drop)
+    _show_message("%d ASHEN SHARDS LOST  •  RETURN TO RECOVER THEM" % amount, 3.0)
+
+func _on_death_drop_entered(body: Node2D, drop: Node2D) -> void:
+    if body != player or not is_instance_valid(drop):
+        return
+    var recovered: int = AshenProfile.recover_death_drop()
+    if recovered <= 0:
+        return
+    drop.queue_free()
+    _refresh_hud()
+    _show_message("%d ASHEN SHARDS RECOVERED" % recovered, 2.0)
+
+func _on_enemy_removed(enemy: Node) -> void:
+    if not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
+        return
+    if enemy.get("dead") == true:
+        AshenProfile.award_embers(2)
+        _refresh_hud()
+        _show_message("+2 ASHEN SHARDS", 1.0)
+
 func _make_enemy(at: Vector2) -> void:
     var enemy := ENEMY_SCENE.instantiate()
     enemy.position = _surface_spawn_position(at, 17.0)
+    enemy.set("speed_multiplier", AshenProfile.get_enemy_speed_multiplier())
+    enemy.connect("tree_exiting", Callable(self, "_on_enemy_removed").bind(enemy))
     level_root.add_child(enemy)
 
 func _surface_spawn_position(requested: Vector2, half_height: float) -> Vector2:
@@ -940,7 +989,7 @@ func _refresh_hud() -> void:
             level_name = "THE HUSHVAULT"
         elif current_level == 4:
             level_name = "LUMINOUS CAVES TEST MAP"
-        shard_label.text = "LEVEL %d: %s  •  SHARD %d/1" % [current_level, level_name, shards]
+        shard_label.text = "LEVEL %d: %s  •  GATE SHARD %d/1\nASHEN SHARDS: %d CARRIED  •  %d BANKED" % [current_level, level_name, shards, AshenProfile.carried_embers, AshenProfile.banked_embers]
 
 func _show_message(text: String, seconds: float) -> void:
     message_generation += 1
@@ -957,16 +1006,19 @@ func _on_checkpoint_entered(body: Node2D, at: Vector2) -> void:
     checkpoint_position = at
     player.respawn_position = checkpoint_position
     player.restore_shield()
-    _show_message("CHECKPOINT KINDLED", 2.0)
+    var banked_amount: int = AshenProfile.bank_carried()
+    _refresh_hud()
+    _show_message("CHECKPOINT KINDLED  •  %d ASHEN SHARDS BANKED" % banked_amount, 2.0)
 
 func _on_collectible_entered(body: Node2D, area: Area2D, visual: Node2D) -> void:
     if body != player or not is_instance_valid(area):
         return
     shards = 1
+    AshenProfile.award_embers(5)
     area.queue_free()
     visual.queue_free()
     _refresh_hud()
-    _show_message("SHARD FOUND", 2.0)
+    _show_message("GATE SHARD FOUND  •  +5 ASHEN SHARDS", 2.0)
 
 func _on_bow_pickup_entered(body: Node2D, effect: String, area: Area2D, visual: Node2D) -> void:
     if body != player or not is_instance_valid(area):
@@ -1013,6 +1065,7 @@ func _start_level_two() -> void:
     completed = false
     checkpoint_position = Vector2(120, 418)
     player.respawn_position = checkpoint_position
+    AshenProfile.record_region_clear()
     _build_level(2)
     player.respawn(checkpoint_position)
     _refresh_hud()
@@ -1024,6 +1077,7 @@ func _start_level_three() -> void:
     completed = false
     checkpoint_position = Vector2(120, 418)
     player.respawn_position = checkpoint_position
+    AshenProfile.record_region_clear()
     _build_level(3)
     player.respawn(checkpoint_position)
     _refresh_hud()
@@ -1103,6 +1157,12 @@ func _on_boss_defeated() -> void:
     _show_message("THE BELLOWS SAINT FALLS — CLAIM THE STILLHEART", 3.0)
 
 func _on_player_died() -> void:
+    for old_drop in get_tree().get_nodes_in_group("death_drops"):
+        old_drop.queue_free()
+    var dropped_amount: int = AshenProfile.record_death(player.global_position)
+    if dropped_amount > 0:
+        _spawn_death_drop(player.global_position, dropped_amount)
+    _refresh_hud()
     for projectile in get_tree().get_nodes_in_group("elite_projectiles"):
         projectile.queue_free()
     for enemy in get_tree().get_nodes_in_group("enemies"):
