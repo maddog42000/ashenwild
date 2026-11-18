@@ -16,6 +16,7 @@ var camera: Camera2D
 var level_root: Node2D
 var current_level := 1
 var level_world_width := 1600.0
+var level_world_height := 800.0
 var checkpoint_position := Vector2(120, 418)
 var shards := 0
 var paused := false
@@ -104,6 +105,7 @@ func _setup_touch_controls() -> void:
     layer.add_child(controls)
 
 func _build_level(level_id: int) -> void:
+    level_world_height = 800.0
     if is_instance_valid(level_root):
         level_root.queue_free()
     level_root = Node2D.new()
@@ -322,7 +324,7 @@ func _update_camera_limits() -> void:
         camera.limit_left = 0
         camera.limit_right = int(level_world_width)
         camera.limit_top = 0
-        camera.limit_bottom = 800
+        camera.limit_bottom = int(level_world_height)
 
 func _platform(center: Vector2, size: Vector2, tint: Color) -> void:
     var body := StaticBody2D.new()
@@ -828,6 +830,7 @@ func _start_custom_map(data: Dictionary) -> void:
 	active_custom_map_data = data.duplicate(true)
 	custom_map_active = true
 	level_world_width = float(int(data.get("width", 40)) * 24)
+	level_world_height = float(int(data.get("height", 20)) * 24)
 	var spawn: Vector2 = CUSTOM_MAP_RUNTIME.build(self, level_root, data)
 	checkpoint_position = spawn
 	player.respawn_position = spawn
