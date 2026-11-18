@@ -26,6 +26,9 @@ var status_label: Label
 var palette: VBoxContainer
 var canvas_rect := Rect2(190, 78, 730, 420)
 var mouse_down := false
+var test_left := false
+var test_right := false
+var test_controls: HBoxContainer
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -109,6 +112,28 @@ func _build_ui() -> void:
     status_label.add_theme_font_size_override("font_size", 12)
     status_label.add_theme_color_override("font_color", Color(0.56, 0.83, 0.77))
     add_child(status_label)
+    test_controls = HBoxContainer.new()
+    test_controls.position = Vector2(660, 458)
+    test_controls.visible = false
+    test_controls.add_theme_constant_override("separation", 4)
+    add_child(test_controls)
+    var left_button := Button.new()
+    left_button.text = "◀"
+    left_button.custom_minimum_size = Vector2(48, 34)
+    left_button.button_down.connect(func(): test_left = true)
+    left_button.button_up.connect(func(): test_left = false)
+    test_controls.add_child(left_button)
+    var right_button := Button.new()
+    right_button.text = "▶"
+    right_button.custom_minimum_size = Vector2(48, 34)
+    right_button.button_down.connect(func(): test_right = true)
+    right_button.button_up.connect(func(): test_right = false)
+    test_controls.add_child(right_button)
+    var jump_button := Button.new()
+    jump_button.text = "JUMP"
+    jump_button.custom_minimum_size = Vector2(76, 34)
+    jump_button.pressed.connect(_test_jump)
+    test_controls.add_child(jump_button)
 
 func _style_panel(panel: Panel) -> void:
     var sb := StyleBoxFlat.new()
@@ -270,6 +295,7 @@ func _load_map() -> void:
 
 func _toggle_test() -> void:
     testing = not testing
+    test_controls.visible = testing
     test_player = Vector2(60, (MAP_H - 3) * TILE)
     test_velocity = Vector2.ZERO
     status_label.text = "TEST PLAY active.\nTap Test Play to exit." if testing else "Editor ready.\nChoose a piece."
@@ -279,9 +305,9 @@ func _physics_process(delta: float) -> void:
     if not testing:
         return
     var direction := Input.get_axis("ui_left", "ui_right")
-    if Input.is_key_pressed(KEY_A):
+    if Input.is_key_pressed(KEY_A) or test_left:
         direction = -1.0
-    elif Input.is_key_pressed(KEY_D):
+    elif Input.is_key_pressed(KEY_D) or test_right:
         direction = 1.0
     test_velocity.x = direction * 190.0
     test_velocity.y += 900.0 * delta
@@ -297,6 +323,10 @@ func _physics_process(delta: float) -> void:
     test_player = next
     test_player.x = clampf(test_player.x, 8.0, MAP_W * TILE - 8.0)
     queue_redraw()
+
+func _test_jump() -> void:
+    if testing and _test_grounded():
+        test_velocity.y = -360.0
 
 func _test_grounded() -> bool:
     var row := int((test_player.y + 10.0) / TILE)
