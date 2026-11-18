@@ -7,12 +7,6 @@ func _fail(message: String) -> void:
     push_error(message)
     quit(1)
 
-func _has_platform_at(main: Node, expected: Vector2) -> bool:
-    for child in main.level_root.get_children():
-        if child is Node2D and child.is_in_group("platforms") and child.position.distance_to(expected) < 1.0:
-            return true
-    return false
-
 func _enemy_named(expected_name: String) -> Node:
     for enemy in get_nodes_in_group("enemies"):
         if enemy.name == expected_name:
