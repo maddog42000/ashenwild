@@ -11,7 +11,8 @@ Map Forge is an offline, touch-friendly tile editor opened from the ASHENWILD ti
 - Undo/redo history.
 - Random Map draft generation with a floor, elevated platforms, pickups, enemy markers, checkpoint, and exit.
 - Local JSON save/load under `user://custom_maps/`.
-- Basic test-play sandbox with left/right movement and jump physics over placed stone/platform/checkpoint/exit cells.
+- **Play in Game:** launches the custom map using the actual ASHENWILD player controller, camera, touch controls, enemy scenes, hazard triggers, shard pickups, checkpoint banking, and exit trigger.
+- Custom map exits do not require the campaign gate shard.
 - Android-friendly Godot Control/Button interface; mouse/keyboard support remains available.
 
 ## Data contract (version 1)
@@ -33,11 +34,11 @@ A future AI generator can return this same JSON structure. The game should valid
 4. Use Undo/Redo as needed.
 5. Choose Random Map to create a starting layout.
 6. Save stores the map locally. Load opens the first valid local JSON map found.
-7. Test Play enters a lightweight movement sandbox; tap Test Play again to return to editing.
+7. Play in Game launches the real gameplay runtime on the custom map. Use the in-game pause menu to return to title, then reopen Map Forge to continue editing.
 8. Back returns to the title menu.
 
 ## Not yet implemented
-- The current Test Play is a lightweight editor sandbox, not the full campaign combat runtime. Enemy, hazard, collectible, checkpoint, and exit tiles are currently visual/data markers; only solid terrain/platform-like cells participate in sandbox collision.
+- Custom maps now use the real player and existing enemy, hazard, pickup, checkpoint, and exit systems. Crystal tiles remain decorative.
 - Custom maps are not yet wired into the campaign's full gameplay scene, progression, enemy scenes, or save slots.
 - Load currently chooses the first valid saved map rather than presenting a map browser.
 - No thumbnail generation, resize tool, rotate tool, object property inspector, multi-layer backgrounds, music selection, or full export/import share sheet yet.
