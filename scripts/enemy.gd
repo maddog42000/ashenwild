@@ -6,6 +6,7 @@ const MAX_HEALTH := 2
 const CONTACT_DAMAGE_COOLDOWN_MS := 900
 
 var health := MAX_HEALTH
+var speed_multiplier: float = 1.0
 var patrol_left := 0.0
 var patrol_right := 0.0
 var direction := -1
@@ -58,13 +59,13 @@ func _physics_process(delta: float) -> void:
         direction = 1 if player.global_position.x > global_position.x else -1
         # Keep closing the gap; the physical body collision below is the only
         # contact attack trigger. Merely passing overhead cannot hurt the player.
-        velocity.x = direction * SPEED
+        velocity.x = direction * SPEED * speed_multiplier
     else:
         if global_position.x < patrol_left:
             direction = 1
         elif global_position.x > patrol_right:
             direction = -1
-        velocity.x = direction * SPEED * 0.65
+        velocity.x = direction * SPEED * 0.65 * speed_multiplier
 
     if not is_on_floor():
         velocity.y += GRAVITY * delta
