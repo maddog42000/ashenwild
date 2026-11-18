@@ -534,19 +534,16 @@ func _on_death_drop_entered(body: Node2D, drop: Node2D) -> void:
     _refresh_hud()
     _show_message("%d ASHEN SHARDS RECOVERED" % recovered, 2.0)
 
-func _on_enemy_removed(enemy: Node) -> void:
-    if not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
-        return
-    if enemy.get("dead") == true:
-        AshenProfile.award_embers(2)
-        _refresh_hud()
-        _show_message("+2 ASHEN SHARDS", 1.0)
+func _on_enemy_defeated(_at: Vector2) -> void:
+    AshenProfile.award_embers(2)
+    _refresh_hud()
+    _show_message("+2 ASHEN SHARDS", 1.0)
 
 func _make_enemy(at: Vector2) -> void:
     var enemy := ENEMY_SCENE.instantiate()
     enemy.position = _surface_spawn_position(at, 17.0)
     enemy.set("speed_multiplier", AshenProfile.get_enemy_speed_multiplier())
-    enemy.connect("tree_exiting", Callable(self, "_on_enemy_removed").bind(enemy))
+    enemy.connect("defeated", Callable(self, "_on_enemy_defeated"))
     level_root.add_child(enemy)
 
 func _surface_spawn_position(requested: Vector2, half_height: float) -> Vector2:
